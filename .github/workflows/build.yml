@@ -30,7 +30,7 @@ jobs:
         run: dotnet test src/GameDealWatcher.Tests/GameDealWatcher.Tests.csproj --verbosity normal
 
   publish:
-    runs-on: windows-latest
+    runs-on: windows-2022
     needs: build
 
     steps:
@@ -40,14 +40,11 @@ jobs:
         with:
           dotnet-version: 9.0.x
 
-      - name: Restore App project
-        run: dotnet restore src/GameDealWatcher.App/GameDealWatcher.App.csproj
-
-      - name: Publish as EXe
-        run: dotnet publish src/GameDealWatcher.App/GameDealWatcher.App.csproj -c Release -r win-x64 --self-contained true -p:UseAppHost=true -o publish
+      - name: Build App
+        run: dotnet build src/GameDealWatcher.App/GameDealWatcher.App.csproj -c Release -r win-x64 --self-contained true -p:UseAppHost=true
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: GameDealWatcher-windows-x64
-          path: publish/
+          path: src/GameDealWatcher.App/bin/Release/net9.0-windows10.0.19041/win-x64/
