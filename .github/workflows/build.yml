@@ -14,12 +14,13 @@ jobs:
           dotnet-version: 9.0.x
 
       - name: Restore
-        run: |
-          dotnet restore GameDealWatcher.sln
-          dotnet restore src/GameDealWatcher.Tests/GameDealWatcher.Tests.csproj
+        run: dotnet restore src/GameDealWatcher.Tests/GameDealWatcher.Tests.csproj
 
       - name: Build
-        run: dotnet build GameDealWatcher.sln --no-restore --verbosity normal
+        run: |
+          dotnet build src/GameDealWatcher.Domain/GameDealWatcher.Domain.csproj --no-restore
+          dotnet build src/GameDealWatcher.Infrastructure/GameDealWatcher.Infrastructure.csproj --no-restore
+          dotnet build src/GameDealWatcher.Application/GameDealWatcher.Application.csproj --no-restore
 
       - name: Test
         run: dotnet test src/GameDealWatcher.Tests/GameDealWatcher.Tests.csproj --no-build --verbosity normal
