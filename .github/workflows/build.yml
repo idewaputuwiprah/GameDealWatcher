@@ -40,7 +40,7 @@ jobs:
           dotnet-version: 9.0.x
 
       - name: Restore App
-        run: dotnet restore src/GameDealWatcher.App/GameDealWatcher.App.csproj
+        run: dotnet restore src/GameDealWatcher.App/GameDealWatcher.App.csproj -r win-x64
 
       - name: Build App
         run: dotnet build src/GameDealWatcher.App/GameDealWatcher.App.csproj --no-restore -c Release -r win-x64 --self-contained true -p:UseAppHost=true -p:GenerateAppxPackageOnBuild=false
