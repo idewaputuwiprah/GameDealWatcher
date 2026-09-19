@@ -43,7 +43,7 @@ jobs:
         run: dotnet restore src/GameDealWatcher.App/GameDealWatcher.App.csproj
 
       - name: Build App
-        run: dotnet build src/GameDealWatcher.App/GameDealWatcher.App.csproj -c Release -r win-x64 --self-contained true -p:UseAppHost=true -p:GenerateAppxPackageOnBuild=false
+        run: dotnet build src/GameDealWatcher.App/GameDealWatcher.App.csproj --no-restore -c Release -r win-x64 --self-contained true -p:UseAppHost=true -p:GenerateAppxPackageOnBuild=false
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4.6.0
