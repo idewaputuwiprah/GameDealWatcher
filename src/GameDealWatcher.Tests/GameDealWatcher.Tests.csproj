@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows10.0.19041</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.4" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GameDealWatcher.Domain\GameDealWatcher.Domain.csproj" />
+    <ProjectReference Include="..\GameDealWatcher.Infrastructure\GameDealWatcher.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

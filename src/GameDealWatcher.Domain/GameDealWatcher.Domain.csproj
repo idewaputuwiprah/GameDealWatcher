@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows10.0.19041</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>GameDealWatcher.Domain</AssemblyName>
+    <RootNamespace>GameDealWatcher.Domain</RootNamespace>
+  </PropertyGroup>
+
+</Project>

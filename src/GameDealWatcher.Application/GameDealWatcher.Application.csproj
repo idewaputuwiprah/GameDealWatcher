@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows10.0.19041</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>GameDealWatcher.Application</AssemblyName>
+    <RootNamespace>GameDealWatcher.Application</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.2" />
+    <PackageReference Include="System.Text.Json" Version="9.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GameDealWatcher.Domain\GameDealWatcher.Domain.csproj" />
+    <ProjectReference Include="..\GameDealWatcher.Infrastructure\GameDealWatcher.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

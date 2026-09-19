@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows10.0.19041</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <OutputType>WinExe</OutputType>
+    <AssemblyName>GameDealWatcher.App</AssemblyName>
+    <RootNamespace>GameDealWatcher.App</RootNamespace>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsSdkPackageVersion>10.0.19041.38</WindowsSdkPackageVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EnablePriGenTooling>false</EnablePriGenTooling>
+    <EnableResourceManagementExtracted>false</EnableResourceManagementExtracted>
+    <AppxGeneratePriEnabled>false</AppxGeneratePriEnabled>
+    <IncludePriDataForFullPaths>false</IncludePriDataForFullPaths>
+    <GenerateResourceUsePreserializedResources>true</GenerateResourceUsePreserializedResources>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.2" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="9.0.2" />
+    <PackageReference Include="Microsoft.Toolkit.Uwp.Notifications" Version="7.1.3" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250310001" />
+    <PackageReference Include="System.Security.Permissions" Version="9.0.0" />
+    <PackageReference Include="System.Drawing.Common" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GameDealWatcher.Application\GameDealWatcher.Application.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <NoWarn>MSB3277</NoWarn>
+  </PropertyGroup>
+
+</Project>

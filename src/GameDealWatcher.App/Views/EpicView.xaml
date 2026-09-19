@@ -1,0 +1,23 @@
+<UserControl x:Class="GameDealWatcher.App.Views.EpicView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="using:GameDealWatcher.Domain.Entities">
+    <StackPanel>
+        <TextBlock Text="Epic Games - Free Games" Style="{StaticResource TitleTextBlockStyle}" Margin="12"/>
+        <ComboBox ItemsSource="{x:Bind ViewModel.FilterOptions}" SelectedItem="{x:Bind ViewModel.FilterText, Mode=TwoWay}" Margin="12" Width="200" AutomationProperties.AutomationId="EpicFilter"/>
+        <ListView ItemsSource="{x:Bind ViewModel.EpicDeals}" SelectionMode="None" Margin="12">
+            <ListView.ItemTemplate>
+                <DataTemplate x:DataType="models:GameDeal">
+                    <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" Margin="5" Padding="12">
+                        <StackPanel>
+                            <TextBlock Text="{x:Bind Title}" Style="{StaticResource SubtitleTextBlockStyle}" />
+                            <TextBlock Text="{x:Bind IsCurrentlyFree}" />
+                            <TextBlock Text="{x:Bind EndsAt}" />
+                            <TextBlock Text="{x:Bind StoreUrl}" />
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+    </StackPanel>
+</UserControl>

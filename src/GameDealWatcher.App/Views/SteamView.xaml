@@ -1,0 +1,25 @@
+<UserControl x:Class="GameDealWatcher.App.Views.SteamView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="using:GameDealWatcher.Domain.Entities">
+    <StackPanel>
+        <TextBlock Text="Steam Deals" Style="{StaticResource TitleTextBlockStyle}" Margin="12"/>
+        <TextBlock Text="Min Discount:" Margin="12,5,0,0" Style="{StaticResource BodyTextBlockStyle}"/>
+        <Slider Minimum="0" Maximum="100" Value="{x:Bind ViewModel.MinimumDiscount, Mode=TwoWay}" Margin="12" Width="200" AutomationProperties.AutomationId="SteamMinDiscount"/>
+        <ListView ItemsSource="{x:Bind ViewModel.SteamDeals}" SelectionMode="None" Margin="12">
+            <ListView.ItemTemplate>
+                <DataTemplate x:DataType="models:GameDeal">
+                    <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" Margin="5" Padding="12">
+                        <StackPanel>
+                            <TextBlock Text="{x:Bind Title}" Style="{StaticResource SubtitleTextBlockStyle}" />
+                            <TextBlock Text="{x:Bind DiscountPercentage}" />
+                            <TextBlock Text="{x:Bind CurrentPrice}" />
+                            <TextBlock Text="{x:Bind OriginalPrice}" />
+                            <TextBlock Text="{x:Bind StoreUrl}" />
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+    </StackPanel>
+</UserControl>

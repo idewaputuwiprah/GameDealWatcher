@@ -1,0 +1,24 @@
+<Window x:Class="GameDealWatcher.App.MainWindow"
+         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+         xmlns:vm="using:GameDealWatcher.App.ViewModels"
+         Title="GameDealWatcher">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="200"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <StackPanel Grid.Column="0" Margin="12">
+            <TextBlock Text="GameDealWatcher" Style="{StaticResource TitleTextBlockStyle}" Margin="0,0,0,12"/>
+            <Button Content="Dashboard" Command="{x:Bind ViewModel.ShowDashboardCommand}" AutomationProperties.AutomationId="NavDashboard" Margin="0,0,0,4"/>
+            <Button Content="Epic Free Games" Command="{x:Bind ViewModel.ShowEpicCommand}" AutomationProperties.AutomationId="NavEpic" Margin="0,0,0,4"/>
+            <Button Content="Steam Deals" Command="{x:Bind ViewModel.ShowSteamCommand}" AutomationProperties.AutomationId="NavSteam" Margin="0,0,0,4"/>
+            <Button Content="Settings" Command="{x:Bind ViewModel.ShowSettingsCommand}" AutomationProperties.AutomationId="NavSettings" Margin="0,0,0,4"/>
+            <Button Content="Refresh" Command="{x:Bind ViewModel.ExecuteRefreshCommand}" AutomationProperties.AutomationId="BtnRefresh" Margin="0,24,0,0"/>
+            <TextBlock Text="{x:Bind ViewModel.LastUpdatedText}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Style="{StaticResource CaptionTextBlockStyle}"/>
+        </StackPanel>
+
+        <Frame x:Name="ContentFrame" Grid.Column="1" Margin="12"/>
+    </Grid>
+</Window>
