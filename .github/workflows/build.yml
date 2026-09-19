@@ -27,4 +27,4 @@ jobs:
           dotnet build src/GameDealWatcher.Application/GameDealWatcher.Application.csproj --no-restore
 
       - name: Test
-        run: dotnet test src/GameDealWatcher.Tests/GameDealWatcher.Tests.csproj --no-build --verbosity normal
+        run: dotnet test src/GameDealWatcher.Tests/GameDealWatcher.Tests.csproj --verbosity normal
