@@ -15,6 +15,7 @@
     <AppxGeneratePriEnabled>false</AppxGeneratePriEnabled>
     <IncludePriDataForFullPaths>false</IncludePriDataForFullPaths>
     <GenerateResourceUsePreserializedResources>true</GenerateResourceUsePreserializedResources>
+    <GenerateAppxPackageOnBuild>false</GenerateAppxPackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
