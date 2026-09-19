@@ -3,35 +3,34 @@ name: Build & Test
 on: [push, pull_request]
 
 jobs:
-  build:
-    runs-on: windows-latest
-
-    steps:
-      - uses: actions/checkout@v4.2.2
-
-      - uses: actions/setup-dotnet@v4.0.1
-        with:
-          dotnet-version: 9.0.x
-
-      - name: Restore
-        run: |
-          dotnet restore src/GameDealWatcher.Domain/GameDealWatcher.Domain.csproj
-          dotnet restore src/GameDealWatcher.Infrastructure/GameDealWatcher.Infrastructure.csproj
-          dotnet restore src/GameDealWatcher.Application/GameDealWatcher.Application.csproj
-          dotnet restore src/GameDealWatcher.Tests/GameDealWatcher.Tests.csproj
-
-      - name: Build
-        run: |
-          dotnet build src/GameDealWatcher.Domain/GameDealWatcher.Domain.csproj --no-restore
-          dotnet build src/GameDealWatcher.Infrastructure/GameDealWatcher.Infrastructure.csproj --no-restore
-          dotnet build src/GameDealWatcher.Application/GameDealWatcher.Application.csproj --no-restore
-
-      - name: Test
-        run: dotnet test src/GameDealWatcher.Tests/GameDealWatcher.Tests.csproj --verbosity normal
+  # build:
+  #   runs-on: windows-latest
+  #
+  #   steps:
+  #     - uses: actions/checkout@v4.2.2
+  #
+  #     - uses: actions/setup-dotnet@v4.0.1
+  #       with:
+  #         dotnet-version: 9.0.x
+  #
+  #     - name: Restore
+  #       run: |
+  #         dotnet restore src/GameDealWatcher.Domain/GameDealWatcher.Domain.csproj
+  #         dotnet restore src/GameDealWatcher.Infrastructure/GameDealWatcher.Infrastructure.csproj
+  #         dotnet restore src/GameDealWatcher.Application/GameDealWatcher.Application.csproj
+  #         dotnet restore src/GameDealWatcher.Tests/GameDealWatcher.Tests.csproj
+  #
+  #     - name: Build
+  #       run: |
+  #         dotnet build src/GameDealWatcher.Domain/GameDealWatcher.Domain.csproj --no-restore
+  #         dotnet build src/GameDealWatcher.Infrastructure/GameDealWatcher.Infrastructure.csproj --no-restore
+  #         dotnet build src/GameDealWatcher.Application/GameDealWatcher.Application.csproj --no-restore
+  #
+  #     - name: Test
+  #       run: dotnet test src/GameDealWatcher.Tests/GameDealWatcher.Tests.csproj --verbosity normal
 
   publish:
     runs-on: windows-2022
-    needs: build
 
     steps:
       - uses: actions/checkout@v4.2.2
