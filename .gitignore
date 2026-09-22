@@ -24,3 +24,8 @@ packages/
 *.sln.docstate
 
 .opencode/
+
+# Test outputs
+_test_console/
+publish*/
+_build_output/
