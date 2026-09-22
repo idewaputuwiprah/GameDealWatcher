@@ -147,6 +147,8 @@ public class GameDealServiceTests
         repoMock.Setup(r => r.GetAllDealsAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<GameDeal>());
         var settingsMock = new Mock<ISettingsRepository>();
+        settingsMock.Setup(s => s.GetSettingsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AppSettings());
         var notifMock = new Mock<INotificationService>();
 
         var failingProvider = new Mock<IGameDealProvider>();
