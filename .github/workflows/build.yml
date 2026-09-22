@@ -33,8 +33,8 @@ jobs:
         with:
           dotnet-version: 9.0.x
 
-      - name: Install Windows App SDK workload
-        run: dotnet workload install wasdk
+      - name: Restore
+        run: dotnet restore src/GameDealWatcher.App/GameDealWatcher.App.csproj
 
       - name: Publish App (self-contained)
         run: dotnet publish src/GameDealWatcher.App/GameDealWatcher.App.csproj -c Release -r win-x64 --self-contained true -p:UseAppHost=true -p:GenerateAppxPackageOnBuild=false
