@@ -16,8 +16,8 @@ jobs:
       - name: Restore
         run: dotnet restore
 
-      - name: Build
-        run: dotnet build --no-restore --configuration Release
+      - name: Build (non-UI projects)
+        run: dotnet build src/GameDealWatcher.Tests/GameDealWatcher.Tests.csproj --no-restore --configuration Release
 
       - name: Test
         run: dotnet test src/GameDealWatcher.Tests/GameDealWatcher.Tests.csproj --no-build --configuration Release --verbosity normal
@@ -32,6 +32,9 @@ jobs:
       - uses: actions/setup-dotnet@v4.0.1
         with:
           dotnet-version: 9.0.x
+
+      - name: Install Windows App SDK workload
+        run: dotnet workload install wasdk
 
       - name: Publish App (self-contained)
         run: dotnet publish src/GameDealWatcher.App/GameDealWatcher.App.csproj -c Release -r win-x64 --self-contained true -p:UseAppHost=true -p:GenerateAppxPackageOnBuild=false
