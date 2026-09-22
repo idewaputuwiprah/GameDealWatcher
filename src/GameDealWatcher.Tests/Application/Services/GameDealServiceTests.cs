@@ -60,6 +60,8 @@ public class GameDealServiceTests
     public async Task RefreshAllDealsAsync_WithEpicNotificationsDisabled_DoesNotSendNotification()
     {
         var repoMock = new Mock<IGameDealRepository>();
+        repoMock.Setup(r => r.GetAllDealsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<GameDeal>());
         var settingsMock = new Mock<ISettingsRepository>();
         settingsMock.Setup(s => s.GetSettingsAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new AppSettings { EpicNotifications = false });
@@ -86,6 +88,8 @@ public class GameDealServiceTests
     public async Task RefreshAllDealsAsync_WithSteamDiscountBelowMinimum_DoesNotSendNotification()
     {
         var repoMock = new Mock<IGameDealRepository>();
+        repoMock.Setup(r => r.GetAllDealsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<GameDeal>());
         var settingsMock = new Mock<ISettingsRepository>();
         settingsMock.Setup(s => s.GetSettingsAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new AppSettings { MinimumSteamDiscount = 50 });
@@ -112,6 +116,8 @@ public class GameDealServiceTests
     public async Task RefreshAllDealsAsync_WithSteamDiscountAboveMinimum_SendsNotification()
     {
         var repoMock = new Mock<IGameDealRepository>();
+        repoMock.Setup(r => r.GetAllDealsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<GameDeal>());
         var settingsMock = new Mock<ISettingsRepository>();
         settingsMock.Setup(s => s.GetSettingsAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new AppSettings { MinimumSteamDiscount = 50 });
@@ -138,6 +144,8 @@ public class GameDealServiceTests
     public async Task RefreshAllDealsAsync_WithProviderFailure_ContinuesWithOtherProvider()
     {
         var repoMock = new Mock<IGameDealRepository>();
+        repoMock.Setup(r => r.GetAllDealsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<GameDeal>());
         var settingsMock = new Mock<ISettingsRepository>();
         var notifMock = new Mock<INotificationService>();
 
@@ -190,8 +198,6 @@ public class GameDealServiceTests
     {
         var existingDeal = CreateDeal("steam_1", "1", ProviderNames.Steam, "Price Change Game", 59.99m, 29.99m, 50);
         var repoMock = new Mock<IGameDealRepository>();
-        repoMock.Setup(r => r.GetAllDealsAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<GameDeal> { existingDeal });
 
         var settingsMock = new Mock<ISettingsRepository>();
         var notifMock = new Mock<INotificationService>();
@@ -202,6 +208,10 @@ public class GameDealServiceTests
             .ReturnsAsync(new List<GameDeal> { changedDeal });
 
         var service = CreateService(repoMock, new List<IGameDealProvider> { providerMock.Object }, settingsMock, notifMock);
+
+        // Override the default empty list set by CreateService with the existing deal
+        repoMock.Setup(r => r.GetAllDealsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<GameDeal> { existingDeal });
 
         await service.RefreshAllDealsAsync(CancellationToken.None);
 
