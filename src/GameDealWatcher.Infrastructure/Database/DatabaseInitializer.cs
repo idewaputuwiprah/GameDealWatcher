@@ -4,6 +4,8 @@ namespace GameDealWatcher.Infrastructure.Database;
 
 public static class DatabaseInitializer
 {
+    private const int CurrentSchemaVersion = 1;
+
     public static async Task InitializeAsync(string connectionString, CancellationToken ct)
     {
         await using var connection = new SqliteConnection(connectionString);
@@ -81,10 +83,43 @@ public static class DatabaseInitializer
             );
 
             -- Seed stores
-            INSERT OR IGNORE INTO Stores (Id, Name, BaseUrl) VALUES 
+            INSERT OR IGNORE INTO Stores (Id, Name, BaseUrl) VALUES
                 ('steam', 'Steam', 'https://store.steampowered.com'),
                 ('epic', 'Epic Games Store', 'https://www.epicgames.com/store');
         ";
         await cmd.ExecuteNonQueryAsync(ct);
+
+        // Run schema migrations if needed
+        await MigrateAsync(connection, ct);
+    }
+
+    /// <summary>
+    /// Checks the current schema version and applies migrations up to CurrentSchemaVersion.
+    /// Future schema changes should add migration steps here.
+    /// </summary>
+    private static async Task MigrateAsync(SqliteConnection connection, CancellationToken ct)
+    {
+        var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT Value FROM Settings WHERE Key = 'SchemaVersion';";
+        var result = await cmd.ExecuteScalarAsync(ct);
+        var currentVersion = 0;
+        if (result != null && result != DBNull.Value)
+        {
+            int.TryParse(result.ToString(), out currentVersion);
+        }
+
+        if (currentVersion >= CurrentSchemaVersion) return;
+
+        // Future migrations go here:
+        // if (currentVersion < 2) { ... run ALTER TABLE ...; currentVersion = 2; }
+
+        // Record the schema version
+        var updateCmd = connection.CreateCommand();
+        updateCmd.CommandText = "INSERT INTO Settings (Key, Value) VALUES ('SchemaVersion', @Version) ON CONFLICT(Key) DO UPDATE SET Value = excluded.Value;";
+        var pVersion = updateCmd.CreateParameter();
+        pVersion.ParameterName = "@Version";
+        pVersion.Value = CurrentSchemaVersion.ToString();
+        updateCmd.Parameters.Add(pVersion);
+        await updateCmd.ExecuteNonQueryAsync(ct);
     }
 }

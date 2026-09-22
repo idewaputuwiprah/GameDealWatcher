@@ -20,18 +20,69 @@ public partial class App : Microsoft.UI.Xaml.Application
 {
     private IServiceProvider? _serviceProvider;
 
-    protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs e)
+    protected override async void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs e)
     {
-        base.OnLaunched(e);
-        var services = new ServiceCollection();
-        ConfigureServices(services);
-        _serviceProvider = services.BuildServiceProvider();
+        try
+        {
+            // Bootstrap the Windows App SDK for unpackaged, self-contained execution.
+            // This MUST be called before any WinUI types are used.
+            try
+            {
+                Microsoft.Windows.ApplicationModel.WindowsAppRuntime.Bootstrap.Initialize();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Bootstrap failed: {ex}");
+                // Bootstrap failure is fatal — the app cannot run without the Windows App SDK runtime.
+                throw;
+            }
 
-        var connectionString = GetConnectionString();
-        _ = InitializeAsync(connectionString);
+            base.OnLaunched(e);
+            var services = new ServiceCollection();
+            ConfigureServices(services);
+            _serviceProvider = services.BuildServiceProvider();
 
-        var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
-        mainWindow.Activate();
+            var connectionString = GetConnectionString();
+            try
+            {
+                await InitializeAsync(connectionString);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Database initialization failed: {ex}");
+                var errorWindow = _serviceProvider.GetRequiredService<MainWindow>();
+                errorWindow.Activate();
+                var dialog = new Microsoft.UI.Xaml.Controls.ContentDialog
+                {
+                    XamlRoot = errorWindow.Content.XamlRoot,
+                    Title = "Initialization Failed",
+                    Content = $"The application could not initialize its database: {ex.Message}",
+                    CloseButtonText = "Exit"
+                };
+                await dialog.ShowAsync();
+                return;
+            }
+
+            var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
+            mainWindow.Activate();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Fatal startup error: {ex}");
+            // Write a crash log to a known location so the user can report the issue
+            try
+            {
+                var crashDir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "GameDealWatcher", "Logs");
+                Directory.CreateDirectory(crashDir);
+                var crashFile = Path.Combine(crashDir, "crash.log");
+                File.AppendAllText(crashFile,
+                    $"{DateTimeOffset.Now:o} FATAL STARTUP ERROR{Environment.NewLine}{ex}{Environment.NewLine}{new string('=', 60)}{Environment.NewLine}");
+            }
+            catch { }
+            Environment.Exit(1);
+        }
     }
 
     private async Task InitializeAsync(string connectionString)
@@ -41,16 +92,25 @@ public partial class App : Microsoft.UI.Xaml.Application
 
     private void ConfigureServices(IServiceCollection services)
     {
-        services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Debug));
+        services.AddLogging(builder =>
+        {
+            builder.AddConsole().SetMinimumLevel(LogLevel.Debug);
+            builder.AddDebug();
+            // File logging for diagnostics
+            var logDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "GameDealWatcher", "Logs");
+            builder.AddProvider(new FileLoggerProvider(logDir));
+        });
 
         var connectionString = GetConnectionString();
-        services.AddSingleton<IGameDealRepository>(_ => new SqliteGameDealRepository(connectionString));
+        services.AddSingleton<IGameDealRepository>(sp => new SqliteGameDealRepository(connectionString, sp.GetService<ILogger<SqliteGameDealRepository>>()));
         services.AddSingleton<ISettingsRepository>(_ => new JsonSettingsRepository(GetSettingsPath()));
 
         services.AddHttpClients();
 
-        services.AddSingleton<SteamProvider>();
-        services.AddSingleton<EpicGamesProvider>();
+        services.AddSingleton<IGameDealProvider, SteamProvider>();
+        services.AddSingleton<IGameDealProvider, EpicGamesProvider>();
 
         services.AddSingleton<IImageCacheService, ImageCacheService>();
         services.AddSingleton<INotificationService>(_ => new WindowsNotificationService(_.GetRequiredService<ILogger<WindowsNotificationService>>()));

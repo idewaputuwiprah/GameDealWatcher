@@ -3,33 +3,7 @@ name: Build & Test
 on: [push, pull_request]
 
 jobs:
-  # build:
-  #   runs-on: windows-latest
-  #
-  #   steps:
-  #     - uses: actions/checkout@v4.2.2
-  #
-  #     - uses: actions/setup-dotnet@v4.0.1
-  #       with:
-  #         dotnet-version: 9.0.x
-  #
-  #     - name: Restore
-  #       run: |
-  #         dotnet restore src/GameDealWatcher.Domain/GameDealWatcher.Domain.csproj
-  #         dotnet restore src/GameDealWatcher.Infrastructure/GameDealWatcher.Infrastructure.csproj
-  #         dotnet restore src/GameDealWatcher.Application/GameDealWatcher.Application.csproj
-  #         dotnet restore src/GameDealWatcher.Tests/GameDealWatcher.Tests.csproj
-  #
-  #     - name: Build
-  #       run: |
-  #         dotnet build src/GameDealWatcher.Domain/GameDealWatcher.Domain.csproj --no-restore
-  #         dotnet build src/GameDealWatcher.Infrastructure/GameDealWatcher.Infrastructure.csproj --no-restore
-  #         dotnet build src/GameDealWatcher.Application/GameDealWatcher.Application.csproj --no-restore
-  #
-  #     - name: Test
-  #       run: dotnet test src/GameDealWatcher.Tests/GameDealWatcher.Tests.csproj --verbosity normal
-
-  publish:
+  build-and-test:
     runs-on: windows-2022
 
     steps:
@@ -39,14 +13,31 @@ jobs:
         with:
           dotnet-version: 9.0.x
 
-      - name: Restore App
-        run: dotnet restore src/GameDealWatcher.App/GameDealWatcher.App.csproj -r win-x64
+      - name: Restore
+        run: dotnet restore
 
-      - name: Build App
-        run: dotnet build src/GameDealWatcher.App/GameDealWatcher.App.csproj --no-restore -c Release -r win-x64 --self-contained true -p:UseAppHost=true -p:GenerateAppxPackageOnBuild=false
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test src/GameDealWatcher.Tests/GameDealWatcher.Tests.csproj --no-build --configuration Release --verbosity normal
+
+  publish:
+    runs-on: windows-2022
+    needs: build-and-test
+
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - uses: actions/setup-dotnet@v4.0.1
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Publish App (self-contained)
+        run: dotnet publish src/GameDealWatcher.App/GameDealWatcher.App.csproj -c Release -r win-x64 --self-contained true -p:UseAppHost=true -p:GenerateAppxPackageOnBuild=false
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4.6.0
         with:
           name: GameDealWatcher-windows-x64
-          path: src/GameDealWatcher.App/bin/Release/net9.0-windows10.0.19041/win-x64/
+          path: src/GameDealWatcher.App/bin/Release/net9.0-windows10.0.19041/win-x64/publish/

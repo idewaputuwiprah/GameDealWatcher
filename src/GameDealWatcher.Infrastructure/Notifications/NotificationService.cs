@@ -1,12 +1,8 @@
+using GameDealWatcher.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
 using Microsoft.Toolkit.Uwp.Notifications;
 
 namespace GameDealWatcher.Infrastructure.Notifications;
-
-public interface INotificationService
-{
-    void ShowDealNotification(string title, string message);
-}
 
 public sealed class WindowsNotificationService : INotificationService
 {

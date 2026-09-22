@@ -9,5 +9,6 @@
         <TextBlock Text="Minimum Steam Discount:" Margin="12,5,0,0" Style="{StaticResource BodyTextBlockStyle}"/>
         <Slider Minimum="0" Maximum="100" Value="{x:Bind ViewModel.MinimumSteamDiscount, Mode=TwoWay}" Margin="12" Width="200" AutomationProperties.AutomationId="SettingsMinDiscount"/>
         <Button Content="Clear Image Cache" Command="{x:Bind ViewModel.ClearCacheCommand}" Margin="12" Width="200" AutomationProperties.AutomationId="BtnClearCache"/>
+        <Button Content="Save Settings" Command="{x:Bind ViewModel.SaveCommand}" Margin="12" Width="200" AutomationProperties.AutomationId="BtnSaveSettings"/>
     </StackPanel>
 </UserControl>

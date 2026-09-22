@@ -1,7 +1,5 @@
 using GameDealWatcher.Domain.Entities;
 using GameDealWatcher.Domain.Interfaces;
-using GameDealWatcher.Infrastructure.Database;
-using GameDealWatcher.Infrastructure.Providers;
 using Microsoft.Extensions.Logging;
 
 namespace GameDealWatcher.Application.Services;
@@ -9,22 +7,24 @@ namespace GameDealWatcher.Application.Services;
 public sealed class GameDealService : IGameDealService
 {
     private readonly IGameDealRepository _repository;
-    private readonly IGameDealProvider _steamProvider;
-    private readonly IGameDealProvider _epicProvider;
+    private readonly IEnumerable<IGameDealProvider> _providers;
     private readonly ISettingsRepository _settingsRepository;
+    private readonly INotificationService _notificationService;
     private readonly ILogger<GameDealService> _logger;
+
+    private static readonly TimeSpan StaleDealThreshold = TimeSpan.FromDays(30);
 
     public GameDealService(
         IGameDealRepository repository,
-        SteamProvider steamProvider,
-        EpicGamesProvider epicProvider,
+        IEnumerable<IGameDealProvider> providers,
         ISettingsRepository settingsRepository,
+        INotificationService notificationService,
         ILogger<GameDealService> logger)
     {
         _repository = repository;
-        _steamProvider = steamProvider;
-        _epicProvider = epicProvider;
+        _providers = providers;
         _settingsRepository = settingsRepository;
+        _notificationService = notificationService;
         _logger = logger;
     }
 
@@ -44,51 +44,119 @@ public sealed class GameDealService : IGameDealService
         _logger.LogInformation("Refresh started at {Time}", DateTimeOffset.UtcNow);
         var settings = await _settingsRepository.GetSettingsAsync(ct);
 
-        var steamDealsTask = RefreshSteamAsync(ct);
-        var epicDealsTask = RefreshEpicAsync(ct);
-        await Task.WhenAll(steamDealsTask, epicDealsTask);
+        // 1. Snapshot existing deals BEFORE refresh for price-change comparison
+        var existingDeals = await _repository.GetAllDealsAsync(ct);
+        var existingMap = existingDeals.GroupBy(d => (d.ProviderName, d.ProviderGameId)).ToDictionary(g => g.Key, g => g.First());
 
-        var steamDeals = await steamDealsTask;
-        var epicDeals = await epicDealsTask;
+        // 2. Refresh all providers concurrently with isolated failure boundaries
+        var refreshTasks = _providers.Select(p => RefreshProviderAsync(p, ct)).ToList();
+        var providerResults = await Task.WhenAll(refreshTasks);
 
-        await _settingsRepository.SaveSettingsAsync(settings with { RefreshTime = TimeOnly.FromDateTime(DateTime.UtcNow.ToLocalTime()) }, ct);
-        await _repository.SaveLastRefreshAsync(settings.RefreshInterval, ct);
+        // 3. Collect all results
+        var allNewDeals = providerResults.SelectMany(d => d).ToList();
+
+        // 4. Compare old vs new — record price changes + detect new deals
+        var newDealNotifications = new List<GameDeal>();
+        var priceChangedDeals = new List<GameDeal>();
+        foreach (var newDeal in allNewDeals)
+        {
+            var key = (newDeal.ProviderName, newDeal.ProviderGameId);
+            if (existingMap.TryGetValue(key, out var oldDeal))
+            {
+                if (oldDeal.CurrentPrice != newDeal.CurrentPrice)
+                    priceChangedDeals.Add(newDeal);
+            }
+            else
+            {
+                newDealNotifications.Add(newDeal);
+            }
+        }
+        if (priceChangedDeals.Count > 0)
+            await _repository.RecordPriceChangesAsync(priceChangedDeals, ct);
+
+        // 5. Send notifications (respecting user settings)
+        SendNotifications(newDealNotifications, settings);
+
+        // 6. Only mark refresh if at least one provider returned data
+        if (allNewDeals.Count > 0)
+        {
+            // Delete deals that were not seen in this refresh (no longer active)
+            try
+            {
+                var seenIds = allNewDeals.Select(d => d.Id).ToList();
+                await _repository.DeleteDealsNotSeenAsync(seenIds, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to delete unseen deals");
+            }
+
+            try
+            {
+                await _repository.SaveLastRefreshAsync(settings.RefreshInterval, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to save last refresh timestamp");
+            }
+
+            // Clean up deals not seen in 30 days (secondary safety net)
+            try
+            {
+                await _repository.DeleteStaleDealsAsync(StaleDealThreshold, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to clean up stale deals");
+            }
+        }
+        else
+        {
+            _logger.LogWarning("All providers returned no deals — not updating refresh timestamp");
+        }
+
         _logger.LogInformation("All refreshes complete at {Time}", DateTimeOffset.UtcNow);
     }
 
-    private async Task<List<GameDeal>> RefreshSteamAsync(CancellationToken ct)
+    private async Task<List<GameDeal>> RefreshProviderAsync(IGameDealProvider provider, CancellationToken ct)
     {
         try
         {
-            var deals = (await _steamProvider.GetDealsAsync(ct)).ToList();
+            var deals = (await provider.GetDealsAsync(ct)).ToList();
             await _repository.InsertDealsAsync(deals, ct);
-            await _repository.RecordRefreshAsync("Steam", true, deals.Count, null, ct);
-            _logger.LogInformation("Steam refresh complete: {Count} deals", deals.Count);
+            await _repository.RecordRefreshAsync(provider.ProviderName, true, deals.Count, null, ct);
+            _logger.LogInformation("{Provider} refresh complete: {Count} deals", provider.ProviderName, deals.Count);
             return deals;
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex)
         {
-            await _repository.RecordRefreshAsync("Steam", false, 0, ex.Message, ct);
-            _logger.LogError(ex, "Steam refresh failed");
+            try
+            {
+                await _repository.RecordRefreshAsync(provider.ProviderName, false, 0, ex.Message, ct);
+            }
+            catch (Exception logEx)
+            {
+                _logger.LogError(logEx, "Failed to record refresh failure for {Provider}", provider.ProviderName);
+            }
+            _logger.LogError(ex, "{Provider} refresh failed", provider.ProviderName);
             return [];
         }
     }
 
-    private async Task<List<GameDeal>> RefreshEpicAsync(CancellationToken ct)
+    private void SendNotifications(List<GameDeal> newDeals, AppSettings settings)
     {
-        try
+        foreach (var deal in newDeals)
         {
-            var deals = (await _epicProvider.GetDealsAsync(ct)).ToList();
-            await _repository.InsertDealsAsync(deals, ct);
-            await _repository.RecordRefreshAsync("Epic", true, deals.Count, null, ct);
-            _logger.LogInformation("Epic refresh complete: {Count} deals", deals.Count);
-            return deals;
-        }
-        catch (Exception ex)
-        {
-            await _repository.RecordRefreshAsync("Epic", false, 0, ex.Message, ct);
-            _logger.LogError(ex, "Epic refresh failed");
-            return [];
+            if (deal.ProviderName == ProviderNames.Epic && settings.EpicNotifications && deal.IsCurrentlyFree)
+            {
+                _notificationService.ShowDealNotification("Free Game!", $"{deal.Title} is now free on Epic Games Store!");
+            }
+            else if (deal.ProviderName == ProviderNames.Steam && settings.SteamNotifications
+                     && deal.DiscountPercentage >= settings.MinimumSteamDiscount)
+            {
+                _notificationService.ShowDealNotification("Steam Deal!", $"{deal.Title} is {deal.DiscountPercentage}% off on Steam!");
+            }
         }
     }
 }

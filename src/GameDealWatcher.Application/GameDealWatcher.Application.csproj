@@ -17,7 +17,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\GameDealWatcher.Domain\GameDealWatcher.Domain.csproj" />
-    <ProjectReference Include="..\GameDealWatcher.Infrastructure\GameDealWatcher.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

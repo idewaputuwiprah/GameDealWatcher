@@ -21,6 +21,7 @@ public sealed partial class MainWindow : Window
         SizeWindow(1000, 600);
         
         ViewModel.PropertyChanged += OnViewModelPropertyChanged;
+        ContentFrame.Content = ViewModel.CurrentView;
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)

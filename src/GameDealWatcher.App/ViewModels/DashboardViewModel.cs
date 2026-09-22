@@ -13,20 +13,39 @@ public partial class DashboardViewModel : ObservableObject
     [ObservableProperty]
     private ObservableCollection<GameDeal> deals = new();
 
+    [ObservableProperty]
+    private bool isLoading;
+
     public DashboardViewModel(IGameDealService gameDealService)
     {
         _gameDealService = gameDealService;
-        _ = LoadDealsAsync();
+    }
+
+    public async Task InitializeAsync()
+    {
+        await LoadDealsAsync();
     }
 
     [RelayCommand]
     public async Task LoadDealsAsync()
     {
-        var fetchedDeals = await _gameDealService.GetAllDealsAsync(CancellationToken.None);
-        Deals.Clear();
-        foreach (var deal in fetchedDeals)
+        try
         {
-            Deals.Add(deal);
+            IsLoading = true;
+            var fetchedDeals = await _gameDealService.GetAllDealsAsync(CancellationToken.None);
+            Deals.Clear();
+            foreach (var deal in fetchedDeals)
+            {
+                Deals.Add(deal);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"LoadDealsAsync failed: {ex}");
+        }
+        finally
+        {
+            IsLoading = false;
         }
     }
 }

@@ -1,5 +1,15 @@
 namespace GameDealWatcher.Domain.Entities;
 
+/// <summary>
+/// Canonical provider name constants used across all layers.
+/// Avoids hardcoding "Epic" / "Steam" strings in multiple locations.
+/// </summary>
+public static class ProviderNames
+{
+    public const string Epic = "Epic";
+    public const string Steam = "Steam";
+}
+
 public sealed record Game(string Id, string Title, string? Publisher, string? Developer);
 
 public sealed record GameDeal(

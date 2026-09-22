@@ -1,4 +1,3 @@
-using System.Net.Http.Json;
 using System.Text.Json;
 using GameDealWatcher.Domain.Entities;
 using GameDealWatcher.Domain.Interfaces;
@@ -10,7 +9,7 @@ public sealed class SteamProvider : IGameDealProvider
 {
     private readonly IHttpClientFactory _httpClientFactory;
 
-    public string ProviderName => "Steam";
+    public string ProviderName => ProviderNames.Steam;
 
     public SteamProvider(IHttpClientFactory httpClientFactory)
     {
@@ -26,19 +25,17 @@ public sealed class SteamProvider : IGameDealProvider
         var doc = JsonDocument.Parse(json);
         var deals = new List<GameDeal>();
         var root = doc.RootElement;
-        if (root.TryGetProperty("specials", out var specials) && specials.ValueKind == JsonValueKind.Object)
+
+        // Steam API structure: root.specials.items[]
+        if (!root.TryGetProperty("specials", out var specials) || specials.ValueKind != JsonValueKind.Object)
+            return deals;
+        if (!specials.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Array)
+            return deals;
+
+        foreach (var item in items.EnumerateArray())
         {
-            foreach (var category in specials.EnumerateObject())
-            {
-                if (category.Value.ValueKind == JsonValueKind.Array)
-                {
-                    foreach (var item in category.Value.EnumerateArray())
-                    {
-                        var deal = ParseSteamDeal(item);
-                        if (deal != null) deals.Add(deal);
-                    }
-                }
-            }
+            var deal = ParseSteamDeal(item);
+            if (deal != null) deals.Add(deal);
         }
         return deals;
     }
@@ -47,18 +44,35 @@ public sealed class SteamProvider : IGameDealProvider
     {
         try
         {
-            var appId = item.GetProperty("id").GetInt32();
-            var name = item.GetProperty("name").GetString() ?? "Unknown";
-            var finalPrice = item.GetProperty("final").GetDecimal() / 100m;
-            var originalPrice = item.GetProperty("final2").GetDecimal() / 100m;
-            var discountPct = item.TryGetProperty("discount_pct", out var dp) ? dp.GetInt32() : 0;
-            var imgUrl = item.TryGetProperty("img", out var img) ? img.GetString() : null;
+            // App ID — required field
+            if (!item.TryGetProperty("id", out var idProp)) return null;
+            var appId = idProp.GetInt32();
+
+            // Name — required field
+            var name = item.TryGetProperty("name", out var nameProp) ? nameProp.GetString() ?? "Unknown" : "Unknown";
+
+            // Prices — Steam stores prices in cents (integers)
+            // Parse discountPct first, then derive originalPrice if missing
+            var discountPct = item.TryGetProperty("discount_percent", out var dp) ? dp.GetInt32() : 0;
+            var finalPrice = item.TryGetProperty("final_price", out var fp) ? fp.GetDecimal() / 100m : 0m;
+            var originalPrice = item.TryGetProperty("original_price", out var op)
+                ? op.GetDecimal() / 100m
+                : (discountPct > 0 && discountPct < 100
+                    ? Math.Round(finalPrice * 100m / (100m - discountPct), 2)
+                    : finalPrice);
+
+            // Image — prefer header_image, fall back to large_capsule_image
+            var imgUrl = item.TryGetProperty("header_image", out var img) ? img.GetString() : null;
+            if (string.IsNullOrEmpty(imgUrl))
+                imgUrl = item.TryGetProperty("large_capsule_image", out var lci) ? lci.GetString() : null;
+
             var storeUrl = $"https://store.steampowered.com/app/{appId}/";
             var dealId = $"steam_{appId}";
+
             return new GameDeal(
                 Id: dealId,
                 ProviderGameId: appId.ToString(),
-                ProviderName: "Steam",
+                ProviderName: ProviderNames.Steam,
                 Title: name,
                 Description: null,
                 Publisher: null,
@@ -79,8 +93,10 @@ public sealed class SteamProvider : IGameDealProvider
                 ReleaseDate: null,
                 Genres: null);
         }
-        catch (Exception)
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"Failed to parse Steam deal: {ex.Message}");
             return null;
         }
     }

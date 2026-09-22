@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Access Denied</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            text-align: center;
+            padding: 50px;
+        }
+        .container {
+            background: #fff;
+            padding: 50px 0px 0px 0px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 50%;
+			min-width: 500px;
+			max-width: 1200px;
+            margin: auto;
+        }
+		.main_body {
+			padding: 0px 20px 0px 20px;
+            margin: auto;
+		}
+		table td{
+			padding-bottom:5px;
+			padding-left : 5px;
+			border-collapse:collapse;
+			line-height:1;
+		}
+		table{
+		    table-layout:fixed;
+			word-break: break-all;
+			margin:auto;
+		}
+
+		.warning {
+			font-size: 80px;
+			color: #c40101;
+			margin-right: 5px;
+		}
+		.title_1 {
+            color: black;
+			font-size: 1.5em;
+			font-weight: bold;
+        }
+		a.sub_title {
+
+		}
+        .info-box {
+            background: #eee;
+            padding: 25px 40px;
+			max-width: fit-content;
+			margin: auto;
+            margin-top: 35px;
+			margin-bottom: 20px;
+            border-radius: 5px;
+        }
+		.info_table td{
+			text-align:left;
+			border-collapse:collapse;
+		}
+		.proxy_num{
+			margin-top: 10px;
+			font-size: 93%;
+			font-weight: bold;
+		}
+
+        .button {
+            display: inline-block;
+            margin-top: 14px;
+            padding: 15px 20px;
+            background-color: black;
+            color: white;
+            text-decoration: none;
+            border-radius: 22px;
+        }
+		.button:hover {
+			background-color: #1429A0;
+        }
+
+        .button1 {
+            display: inline-block;
+            margin-top: 15px;
+			margin-right: 25px;
+            padding: 14px 20px;
+            background-color: #c40101;
+            color: white;
+            text-decoration: none;
+            border-radius: 22px;
+			position: relative;
+        }
+		.button1:hover {
+			background-color: #1429A0;
+        }
+		.pointer {
+			width: 26px;
+			position:absolute;
+			right : -14px;
+			bottom: -8px;
+		}
+
+        .contact {
+            margin-top: 30px;
+            font-size: 14px;
+        }
+		.footer {
+			background-color : #1429A0;
+			border-radius: 0px 0px 8px 8px;
+			color: white;
+			margin-top:50px;
+			padding: 7px 0px;
+
+		}
+
+
+
+    </style>
+
+</head>
+<body>
+    <div class="container">
+	<div class="main_body">
+		<table border="0">
+		<tr>
+			<td rowspan='2'><span class="warning">&#9888;</span></td>
+			<td><a class="title_1">This Page is Blocked by Samsung</br>Non-Business Sites Policy</a></td>
+		</tr>
+		<tr>
+			<td><a class="sub_title">You need to raise a request to access this page.</a></td>
+		</tr>
+		</table>
+
+        <div class="info-box">
+			<table class="info_table" border="0">
+			<tr>
+			<td style="word-break: keep-all"><strong>Category</strong></td>
+			<td><strong>: </strong><span id="block-category">Games;Shopping</span></td>
+			</tr>
+			<tr>
+			<td style="word-break: keep-all"><strong>IP Address</stron</td>
+			<td><strong>: </strong><span id="ip-address">107.102.191.49</span></td>
+			</tr>
+			<tr>
+			<td><strong>URL</strong></td>
+			<td><strong>: </strong><span id="blocked-url">https:&#x2F;&#x2F;store.steampowered.com&#x2F;api&#x2F;featuredcategories&#x2F;?cc=us&amp;l=english</span><br></td>
+			</tr>
+			</table>
+			<div class="proxy_num">SEAO_PROXY_1</div>
+        </div>
+
+		<a href="http://it4u.sec.samsung.net" class="button1">Request Access
+		<img src="https://cdn1.iconfinder.com/data/icons/line-awesome-vol-4/32/mouse-pointer-solid-512.png" class="pointer" alt="">
+		</a>
+
+		<a href="https://107.10.66.115:8082/fs/download/eec49547bcc345429c2579e1139dbe63" class="button">View User Guide</a>
+
+	</div>
+
+	<div class="contact">
+		<br><strong>Subsidiary IT/MIS Contact:</strong>
+		<br><a href="https://107.10.66.115:8082/fs/download/3d6bfe8c3d34418fa80231a0f3c3cfe7" class="button">View PIC Contacts</a>
+		<div class="footer">
+			<div>For SDSAP Users, please raise request via Knox Approval > Firewall Request Form</div>
+			<div>Email: h4ck3r@samsung.com | Phone: +65 68333395</div>
+		</div>
+	</div>
+    </div>
+</body>
+</html>
+
+
+

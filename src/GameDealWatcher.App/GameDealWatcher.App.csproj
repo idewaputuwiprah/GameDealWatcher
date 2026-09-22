@@ -8,6 +8,8 @@
     <AssemblyName>GameDealWatcher.App</AssemblyName>
     <RootNamespace>GameDealWatcher.App</RootNamespace>
     <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <SelfContained>true</SelfContained>
     <WindowsSdkPackageVersion>10.0.19041.38</WindowsSdkPackageVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <EnablePriGenTooling>false</EnablePriGenTooling>
@@ -33,6 +35,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\GameDealWatcher.Application\GameDealWatcher.Application.csproj" />
+    <ProjectReference Include="..\GameDealWatcher.Infrastructure\GameDealWatcher.Infrastructure.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

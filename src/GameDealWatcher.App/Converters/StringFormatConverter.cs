@@ -11,7 +11,7 @@ public class StringFormatConverter : IValueConverter
         if (value == null) return string.Empty;
         if (parameter is string format && !string.IsNullOrEmpty(format))
             return string.Format(format, value);
-        return value?.ToString() ?? string.Empty;
+        return value.ToString() ?? string.Empty;
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, string language)

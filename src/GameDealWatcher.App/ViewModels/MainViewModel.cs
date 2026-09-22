@@ -50,7 +50,17 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task ExecuteRefreshAsync()
     {
-        await _gameDealService.RefreshAllDealsAsync(CancellationToken.None);
-        LastUpdatedText = $"Last updated: {DateTime.Now:t}";
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+            await _gameDealService.RefreshAllDealsAsync(cts.Token);
+            LastUpdatedText = $"Last updated: {DateTime.Now:t}";
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Refresh failed: {ex}");
+            LastUpdatedText = "Refresh failed";
+        }
     }
 }

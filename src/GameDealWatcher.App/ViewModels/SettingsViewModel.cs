@@ -1,7 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GameDealWatcher.Domain.Entities;
-using GameDealWatcher.Infrastructure.Database;
+using GameDealWatcher.Domain.Interfaces;
 using GameDealWatcher.Infrastructure.Images;
 
 namespace GameDealWatcher.App.ViewModels;
@@ -33,18 +33,29 @@ public partial class SettingsViewModel : ObservableObject
     {
         _imageCacheService = imageCacheService;
         _settingsRepository = settingsRepository;
-        LoadSettings();
     }
 
-    private void LoadSettings()
+    public async Task InitializeAsync()
     {
-        var settings = _settingsRepository.GetSettingsAsync(CancellationToken.None).GetAwaiter().GetResult();
-        RefreshInterval = settings.RefreshInterval;
-        RefreshTime = settings.RefreshTime;
-        StartWithWindows = settings.StartWithWindows;
-        EpicNotifications = settings.EpicNotifications;
-        SteamNotifications = settings.SteamNotifications;
-        MinimumSteamDiscount = settings.MinimumSteamDiscount;
+        await LoadSettingsAsync();
+    }
+
+    private async Task LoadSettingsAsync()
+    {
+        try
+        {
+            var settings = await _settingsRepository.GetSettingsAsync(CancellationToken.None);
+            RefreshInterval = settings.RefreshInterval;
+            RefreshTime = settings.RefreshTime;
+            StartWithWindows = settings.StartWithWindows;
+            EpicNotifications = settings.EpicNotifications;
+            SteamNotifications = settings.SteamNotifications;
+            MinimumSteamDiscount = settings.MinimumSteamDiscount;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Failed to load settings: {ex}");
+        }
     }
 
     [RelayCommand]

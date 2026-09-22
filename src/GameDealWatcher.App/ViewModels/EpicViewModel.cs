@@ -9,6 +9,7 @@ namespace GameDealWatcher.App.ViewModels;
 public partial class EpicViewModel : ObservableObject
 {
     private readonly IGameDealService _gameDealService;
+    private CancellationTokenSource? _loadCts;
 
     [ObservableProperty]
     private ObservableCollection<GameDeal> epicDeals = new();
@@ -16,22 +17,60 @@ public partial class EpicViewModel : ObservableObject
     [ObservableProperty]
     private string filterText = "All";
 
+    [ObservableProperty]
+    private bool isLoading;
+
     public ObservableCollection<string> FilterOptions { get; } = new() { "All", "Free Now", "Upcoming" };
 
     public EpicViewModel(IGameDealService gameDealService)
     {
         _gameDealService = gameDealService;
+    }
+
+    public async Task InitializeAsync()
+    {
+        await LoadDealsAsync();
+    }
+
+    partial void OnFilterTextChanged(string value)
+    {
         _ = LoadDealsAsync();
     }
 
     [RelayCommand]
     public async Task LoadDealsAsync()
     {
-        var fetchedDeals = await _gameDealService.GetAllDealsAsync(CancellationToken.None);
-        EpicDeals.Clear();
-        foreach (var d in fetchedDeals.Where(d => d.ProviderName == "Epic"))
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        _loadCts = new CancellationTokenSource();
+
+        try
         {
-            EpicDeals.Add(d);
+            IsLoading = true;
+            var fetchedDeals = await _gameDealService.GetAllDealsAsync(_loadCts.Token);
+            var epicDeals = fetchedDeals.Where(d => d.ProviderName == ProviderNames.Epic);
+
+            var filtered = FilterText switch
+            {
+                "Free Now" => epicDeals.Where(d => d.IsCurrentlyFree),
+                "Upcoming" => epicDeals.Where(d => d.IsUpcoming),
+                _ => epicDeals
+            };
+
+            EpicDeals.Clear();
+            foreach (var d in filtered)
+            {
+                EpicDeals.Add(d);
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"LoadDealsAsync failed: {ex}");
+        }
+        finally
+        {
+            IsLoading = false;
         }
     }
 }
