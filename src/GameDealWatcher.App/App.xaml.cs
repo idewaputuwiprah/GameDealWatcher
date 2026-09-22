@@ -24,19 +24,9 @@ public partial class App : Microsoft.UI.Xaml.Application
     {
         try
         {
-            // Bootstrap the Windows App SDK for unpackaged, self-contained execution.
-            // This MUST be called before any WinUI types are used.
-            try
-            {
-                Microsoft.Windows.ApplicationModel.WindowsAppRuntime.Bootstrap.Initialize();
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Bootstrap failed: {ex}");
-                // Bootstrap failure is fatal — the app cannot run without the Windows App SDK runtime.
-                throw;
-            }
-
+            // With WindowsAppSDKSelfContained=true the Windows App Runtime is bundled,
+            // so Bootstrap.Initialize() is unnecessary and not available at compile time
+            // when using the NuGet package without the Windows App SDK workload.
             base.OnLaunched(e);
             var services = new ServiceCollection();
             ConfigureServices(services);
