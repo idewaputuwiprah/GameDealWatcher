@@ -42,15 +42,21 @@ jobs:
       - name: Diagnose PRI generation
         run: |
           $publishDir = "src/GameDealWatcher.App/bin/Release/net9.0-windows10.0.19041/win-x64/publish"
-          Write-Host "=== Publish directory contents (PRI/XBF related) ==="
-          Get-ChildItem $publishDir -Recurse -Include *.pri,*.xbf,resources.pri | ForEach-Object { Write-Host $_.FullName }
+          $binDir = "src/GameDealWatcher.App/bin/Release/net9.0-windows10.0.19041/win-x64"
+          $objDir = "src/GameDealWatcher.App/obj/Release/net9.0-windows10.0.19041/win-x64"
+          Write-Host "=== Checking publish dir for PRI ==="
+          Get-ChildItem $publishDir -Filter *.pri -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.FullName }
+          Write-Host "=== Checking bin dir for PRI ==="
+          Get-ChildItem $binDir -Filter *.pri -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.FullName }
+          Write-Host "=== Checking obj dir for PRI ==="
+          Get-ChildItem $objDir -Filter *.pri -Recurse -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.FullName }
           Write-Host "=== All files in publish dir ==="
           Get-ChildItem $publishDir | ForEach-Object { Write-Host $_.Name }
           $priFile = Join-Path $publishDir "resources.pri"
           if (Test-Path $priFile) {
-            Write-Host "resources.pri EXISTS"
+            Write-Host "resources.pri EXISTS in publish dir"
           } else {
-            Write-Host "::error::resources.pri NOT FOUND — XAML parsing will fail"
+            Write-Host "::error::resources.pri NOT FOUND in publish dir"
           }
 
       - name: Smoke Test (launch exe, verify no crash)
