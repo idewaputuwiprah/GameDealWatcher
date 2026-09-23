@@ -39,6 +39,20 @@ jobs:
       - name: Publish App (self-contained)
         run: dotnet publish src/GameDealWatcher.App/GameDealWatcher.App.csproj -c Release -r win-x64 --self-contained true -p:UseAppHost=true -p:GenerateAppxPackageOnBuild=false
 
+      - name: Diagnose PRI generation
+        run: |
+          $publishDir = "src/GameDealWatcher.App/bin/Release/net9.0-windows10.0.19041/win-x64/publish"
+          Write-Host "=== Publish directory contents (PRI/XBF related) ==="
+          Get-ChildItem $publishDir -Recurse -Include *.pri,*.xbf,resources.pri | ForEach-Object { Write-Host $_.FullName }
+          Write-Host "=== All files in publish dir ==="
+          Get-ChildItem $publishDir | ForEach-Object { Write-Host $_.Name }
+          $priFile = Join-Path $publishDir "resources.pri"
+          if (Test-Path $priFile) {
+            Write-Host "resources.pri EXISTS"
+          } else {
+            Write-Host "::error::resources.pri NOT FOUND — XAML parsing will fail"
+          }
+
       - name: Smoke Test (launch exe, verify no crash)
         run: |
           $exe = "src/GameDealWatcher.App/bin/Release/net9.0-windows10.0.19041/win-x64/publish/GameDealWatcher.App.exe"
