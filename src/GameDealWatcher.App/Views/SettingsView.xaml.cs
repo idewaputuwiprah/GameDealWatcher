@@ -7,7 +7,6 @@ namespace GameDealWatcher.App.Views;
 public partial class SettingsView : UserControl
 {
     public SettingsViewModel ViewModel { get; }
-    private bool _initialized;
 
     public SettingsView(SettingsViewModel viewModel)
     {
@@ -19,8 +18,6 @@ public partial class SettingsView : UserControl
 
     private async void SettingsView_Loaded(object sender, RoutedEventArgs e)
     {
-        if (_initialized) return;
-        _initialized = true;
         await ViewModel.InitializeAsync();
     }
 }

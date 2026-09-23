@@ -32,38 +32,36 @@ public partial class App : Microsoft.UI.Xaml.Application
             ConfigureServices(services);
             _serviceProvider = services.BuildServiceProvider();
 
-            // Activate the main window first so XamlRoot is available for error dialogs
-            var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
-            mainWindow.Activate();
-
+            var connectionString = GetConnectionString();
             try
             {
-                await InitializeAsync(GetConnectionString());
+                await InitializeAsync(connectionString);
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Database initialization failed: {ex}");
-                // Defer the dialog to the next UI tick so XamlRoot is fully initialized
-                mainWindow.DispatcherQueue.TryEnqueue(async () =>
+                var errorWindow = _serviceProvider.GetRequiredService<MainWindow>();
+                errorWindow.Activate();
+                try
                 {
-                    try
+                    var dialog = new Microsoft.UI.Xaml.Controls.ContentDialog
                     {
-                        var dialog = new Microsoft.UI.Xaml.Controls.ContentDialog
-                        {
-                            XamlRoot = mainWindow.Content.XamlRoot,
-                            Title = "Initialization Failed",
-                            Content = $"The application could not initialize its database: {ex.Message}",
-                            CloseButtonText = "Exit"
-                        };
-                        await dialog.ShowAsync();
-                    }
-                    catch (Exception dialogEx)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"Failed to show error dialog: {dialogEx}");
-                    }
-                });
+                        XamlRoot = errorWindow.Content.XamlRoot,
+                        Title = "Initialization Failed",
+                        Content = $"The application could not initialize its database: {ex.Message}",
+                        CloseButtonText = "Exit"
+                    };
+                    await dialog.ShowAsync();
+                }
+                catch (Exception dialogEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to show error dialog: {dialogEx}");
+                }
                 return;
             }
+
+            var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
+            mainWindow.Activate();
         }
         catch (Exception ex)
         {
@@ -125,10 +123,10 @@ public partial class App : Microsoft.UI.Xaml.Application
         services.AddSingleton<MainViewModel>();
 
         services.AddSingleton<MainWindow>();
-        services.AddTransient<DashboardView>();
-        services.AddTransient<EpicView>();
-        services.AddTransient<SteamView>();
-        services.AddTransient<SettingsView>();
+        services.AddSingleton<DashboardView>();
+        services.AddSingleton<EpicView>();
+        services.AddSingleton<SteamView>();
+        services.AddSingleton<SettingsView>();
     }
 
     private static string GetConnectionString()

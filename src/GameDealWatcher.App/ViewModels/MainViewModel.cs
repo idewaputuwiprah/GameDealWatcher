@@ -2,14 +2,12 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GameDealWatcher.Application.Services;
 using GameDealWatcher.App.Views;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace GameDealWatcher.App.ViewModels;
 
 public partial class MainViewModel : ObservableObject
 {
     private readonly IGameDealService _gameDealService;
-    private readonly IServiceProvider _serviceProvider;
 
     [ObservableProperty]
     private object currentView;
@@ -17,26 +15,37 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string lastUpdatedText = "Not refreshed";
 
+    private readonly DashboardView _dashboardView;
+    private readonly EpicView _epicView;
+    private readonly SteamView _steamView;
+    private readonly SettingsView _settingsView;
+
     public MainViewModel(
         IGameDealService gameDealService,
-        IServiceProvider serviceProvider)
+        DashboardView dashboardView,
+        EpicView epicView,
+        SteamView steamView,
+        SettingsView settingsView)
     {
         _gameDealService = gameDealService;
-        _serviceProvider = serviceProvider;
-        currentView = _serviceProvider.GetRequiredService<DashboardView>();
+        _dashboardView = dashboardView;
+        _epicView = epicView;
+        _steamView = steamView;
+        _settingsView = settingsView;
+        currentView = _dashboardView;
     }
 
     [RelayCommand]
-    private void ShowDashboard() => CurrentView = _serviceProvider.GetRequiredService<DashboardView>();
+    private void ShowDashboard() => CurrentView = _dashboardView;
 
     [RelayCommand]
-    private void ShowEpic() => CurrentView = _serviceProvider.GetRequiredService<EpicView>();
+    private void ShowEpic() => CurrentView = _epicView;
 
     [RelayCommand]
-    private void ShowSteam() => CurrentView = _serviceProvider.GetRequiredService<SteamView>();
+    private void ShowSteam() => CurrentView = _steamView;
 
     [RelayCommand]
-    private void ShowSettings() => CurrentView = _serviceProvider.GetRequiredService<SettingsView>();
+    private void ShowSettings() => CurrentView = _settingsView;
 
     [RelayCommand]
     private async Task ExecuteRefreshAsync()

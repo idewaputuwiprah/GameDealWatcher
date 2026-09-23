@@ -7,7 +7,6 @@ namespace GameDealWatcher.App.Views;
 public partial class EpicView : UserControl
 {
     public EpicViewModel ViewModel { get; }
-    private bool _initialized;
 
     public EpicView(EpicViewModel viewModel)
     {
@@ -19,8 +18,6 @@ public partial class EpicView : UserControl
 
     private async void EpicView_Loaded(object sender, RoutedEventArgs e)
     {
-        if (_initialized) return;
-        _initialized = true;
         await ViewModel.InitializeAsync();
     }
 }
