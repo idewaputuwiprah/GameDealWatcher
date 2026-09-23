@@ -75,11 +75,7 @@ public sealed class GameDealService : IGameDealService
             await _repository.RecordPriceChangesAsync(priceChangedDeals, ct);
 
         // 5. Send notifications (respecting user settings)
-        // Skip on first refresh (empty database) to avoid spamming the user
-        if (existingDeals.Count > 0)
-        {
-            SendNotifications(newDealNotifications, settings);
-        }
+        SendNotifications(newDealNotifications, settings);
 
         // 6. Only mark refresh if at least one provider returned data
         if (allNewDeals.Count > 0)
@@ -150,16 +146,23 @@ public sealed class GameDealService : IGameDealService
 
     private void SendNotifications(List<GameDeal> newDeals, AppSettings settings)
     {
+        // Cap notifications per refresh to avoid spamming the user on first load
+        const int maxNotifications = 5;
+        var sent = 0;
         foreach (var deal in newDeals)
         {
+            if (sent >= maxNotifications) break;
+
             if (deal.ProviderName == ProviderNames.Epic && settings.EpicNotifications && deal.IsCurrentlyFree)
             {
                 _notificationService.ShowDealNotification("Free Game!", $"{deal.Title} is now free on Epic Games Store!");
+                sent++;
             }
             else if (deal.ProviderName == ProviderNames.Steam && settings.SteamNotifications
                      && deal.DiscountPercentage >= settings.MinimumSteamDiscount)
             {
                 _notificationService.ShowDealNotification("Steam Deal!", $"{deal.Title} is {deal.DiscountPercentage}% off on Steam!");
+                sent++;
             }
         }
     }
