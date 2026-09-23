@@ -61,20 +61,34 @@ public partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     private async Task SaveAsync()
     {
-        await _settingsRepository.SaveSettingsAsync(new AppSettings
+        try
         {
-            RefreshInterval = RefreshInterval,
-            RefreshTime = RefreshTime,
-            StartWithWindows = StartWithWindows,
-            EpicNotifications = EpicNotifications,
-            SteamNotifications = SteamNotifications,
-            MinimumSteamDiscount = MinimumSteamDiscount
-        }, CancellationToken.None);
+            await _settingsRepository.SaveSettingsAsync(new AppSettings
+            {
+                RefreshInterval = RefreshInterval,
+                RefreshTime = RefreshTime,
+                StartWithWindows = StartWithWindows,
+                EpicNotifications = EpicNotifications,
+                SteamNotifications = SteamNotifications,
+                MinimumSteamDiscount = MinimumSteamDiscount
+            }, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Failed to save settings: {ex}");
+        }
     }
 
     [RelayCommand]
     private async Task ClearCacheAsync()
     {
-        await _imageCacheService.ClearCacheAsync();
+        try
+        {
+            await _imageCacheService.ClearCacheAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Failed to clear cache: {ex}");
+        }
     }
 }

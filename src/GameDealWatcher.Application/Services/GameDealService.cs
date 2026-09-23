@@ -75,7 +75,11 @@ public sealed class GameDealService : IGameDealService
             await _repository.RecordPriceChangesAsync(priceChangedDeals, ct);
 
         // 5. Send notifications (respecting user settings)
-        SendNotifications(newDealNotifications, settings);
+        // Skip on first refresh (empty database) to avoid spamming the user
+        if (existingDeals.Count > 0)
+        {
+            SendNotifications(newDealNotifications, settings);
+        }
 
         // 6. Only mark refresh if at least one provider returned data
         if (allNewDeals.Count > 0)

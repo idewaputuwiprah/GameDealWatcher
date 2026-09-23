@@ -32,29 +32,38 @@ public partial class App : Microsoft.UI.Xaml.Application
             ConfigureServices(services);
             _serviceProvider = services.BuildServiceProvider();
 
-            var connectionString = GetConnectionString();
+            // Activate the main window first so XamlRoot is available for error dialogs
+            var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
+            mainWindow.Activate();
+
             try
             {
-                await InitializeAsync(connectionString);
+                await InitializeAsync(GetConnectionString());
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Database initialization failed: {ex}");
-                var errorWindow = _serviceProvider.GetRequiredService<MainWindow>();
-                errorWindow.Activate();
-                var dialog = new Microsoft.UI.Xaml.Controls.ContentDialog
+                // Defer the dialog to the next UI tick so XamlRoot is fully initialized
+                mainWindow.DispatcherQueue.TryEnqueue(async () =>
                 {
-                    XamlRoot = errorWindow.Content.XamlRoot,
-                    Title = "Initialization Failed",
-                    Content = $"The application could not initialize its database: {ex.Message}",
-                    CloseButtonText = "Exit"
-                };
-                await dialog.ShowAsync();
+                    try
+                    {
+                        var dialog = new Microsoft.UI.Xaml.Controls.ContentDialog
+                        {
+                            XamlRoot = mainWindow.Content.XamlRoot,
+                            Title = "Initialization Failed",
+                            Content = $"The application could not initialize its database: {ex.Message}",
+                            CloseButtonText = "Exit"
+                        };
+                        await dialog.ShowAsync();
+                    }
+                    catch (Exception dialogEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Failed to show error dialog: {dialogEx}");
+                    }
+                });
                 return;
             }
-
-            var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
-            mainWindow.Activate();
         }
         catch (Exception ex)
         {
@@ -99,8 +108,11 @@ public partial class App : Microsoft.UI.Xaml.Application
 
         services.AddHttpClients();
 
-        services.AddSingleton<IGameDealProvider, SteamProvider>();
-        services.AddSingleton<IGameDealProvider, EpicGamesProvider>();
+        // TODO: Swap back to real providers when ready for live API calls
+        // services.AddSingleton<IGameDealProvider, SteamProvider>();
+        // services.AddSingleton<IGameDealProvider, EpicGamesProvider>();
+        services.AddSingleton<IGameDealProvider, DummySteamProvider>();
+        services.AddSingleton<IGameDealProvider, DummyEpicProvider>();
 
         services.AddSingleton<IImageCacheService, ImageCacheService>();
         services.AddSingleton<INotificationService>(_ => new WindowsNotificationService(_.GetRequiredService<ILogger<WindowsNotificationService>>()));
@@ -113,10 +125,10 @@ public partial class App : Microsoft.UI.Xaml.Application
         services.AddSingleton<MainViewModel>();
 
         services.AddSingleton<MainWindow>();
-        services.AddSingleton<DashboardView>();
-        services.AddSingleton<EpicView>();
-        services.AddSingleton<SteamView>();
-        services.AddSingleton<SettingsView>();
+        services.AddTransient<DashboardView>();
+        services.AddTransient<EpicView>();
+        services.AddTransient<SteamView>();
+        services.AddTransient<SettingsView>();
     }
 
     private static string GetConnectionString()

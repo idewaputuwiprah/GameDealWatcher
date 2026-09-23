@@ -39,6 +39,33 @@ jobs:
       - name: Publish App (self-contained)
         run: dotnet publish src/GameDealWatcher.App/GameDealWatcher.App.csproj -c Release -r win-x64 --self-contained true -p:UseAppHost=true -p:GenerateAppxPackageOnBuild=false
 
+      - name: Smoke Test (launch exe, verify no crash)
+        run: |
+          $exe = "src/GameDealWatcher.App/bin/Release/net9.0-windows10.0.19041/win-x64/publish/GameDealWatcher.App.exe"
+          $crashLog = "$env:LOCALAPPDATA\GameDealWatcher\Logs\crash.log"
+
+          # Clean up any stale crash log from previous runs
+          if (Test-Path $crashLog) { Remove-Item $crashLog }
+
+          Write-Host "Launching $exe ..."
+          $p = Start-Process -FilePath $exe -PassThru
+
+          # Give the app time to initialize (load XAML, DB, DI container)
+          Start-Sleep -Seconds 10
+
+          if ($p.HasExited) {
+            Write-Host "::error::App process exited prematurely with code $($p.ExitCode)"
+            if (Test-Path $crashLog) {
+              Write-Host "::error::Crash log contents:"
+              Get-Content $crashLog | ForEach-Object { Write-Host "::error::$_" }
+            }
+            exit 1
+          }
+
+          Write-Host "App launched successfully (PID $($p.Id)). Stopping..."
+          Stop-Process -Id $p.Id -Force
+          Write-Host "Smoke test passed."
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v4.6.0
         with:

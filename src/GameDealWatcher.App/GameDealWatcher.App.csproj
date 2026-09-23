@@ -12,11 +12,6 @@
     <SelfContained>true</SelfContained>
     <WindowsSdkPackageVersion>10.0.19041.38</WindowsSdkPackageVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <EnablePriGenTooling>false</EnablePriGenTooling>
-    <EnableResourceManagementExtracted>false</EnableResourceManagementExtracted>
-    <AppxGeneratePriEnabled>false</AppxGeneratePriEnabled>
-    <IncludePriDataForFullPaths>false</IncludePriDataForFullPaths>
-    <GenerateResourceUsePreserializedResources>true</GenerateResourceUsePreserializedResources>
     <GenerateAppxPackageOnBuild>false</GenerateAppxPackageOnBuild>
   </PropertyGroup>
 

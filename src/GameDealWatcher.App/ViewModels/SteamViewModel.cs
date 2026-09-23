@@ -44,7 +44,6 @@ public partial class SteamViewModel : ObservableObject
     public async Task LoadDealsAsync()
     {
         _loadCts?.Cancel();
-        _loadCts?.Dispose();
         _loadCts = new CancellationTokenSource();
 
         try

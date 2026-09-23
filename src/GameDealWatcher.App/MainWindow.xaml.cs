@@ -17,7 +17,6 @@ public sealed partial class MainWindow : Window
         ViewModel = viewModel;
         this.InitializeComponent();
         
-        Title = "GameDealWatcher";
         SizeWindow(1000, 600);
         
         ViewModel.PropertyChanged += OnViewModelPropertyChanged;

@@ -179,32 +179,28 @@ public sealed class SqliteGameDealRepository : IGameDealRepository
         await cmd.ExecuteNonQueryAsync(ct);
     }
 
-    public Task RecordPriceChangeAsync(string dealId, decimal originalPrice, decimal currentPrice, int discountPercentage, string currency, CancellationToken ct)
+    public async Task RecordPriceChangeAsync(string dealId, decimal originalPrice, decimal currentPrice, int discountPercentage, string currency, CancellationToken ct)
     {
-        var deal = new GameDeal(
-            Id: dealId,
-            ProviderGameId: string.Empty,
-            ProviderName: string.Empty,
-            Title: string.Empty,
-            Description: null,
-            Publisher: null,
-            Developer: null,
-            OriginalPrice: originalPrice,
-            CurrentPrice: currentPrice,
-            DiscountPercentage: discountPercentage,
-            Currency: currency,
-            StoreUrl: string.Empty,
-            ImageUrl: null,
-            ThumbnailUrl: null,
-            StartsAt: null,
-            EndsAt: null,
-            IsCurrentlyFree: false,
-            IsUpcoming: false,
-            ReviewScore: null,
-            ReviewCount: null,
-            ReleaseDate: null,
-            Genres: null);
-        return RecordPriceChangesAsync(new[] { deal }, ct);
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(ct);
+        var cmd = connection.CreateCommand();
+        cmd.CommandText = @"INSERT INTO DealHistory (Id, DealId, OriginalPrice, CurrentPrice, DiscountPercentage, Currency, RecordedAt) VALUES (@Id, @DealId, @OriginalPrice, @CurrentPrice, @DiscountPercentage, @Currency, @RecordedAt);";
+        var pId = cmd.CreateParameter(); pId.ParameterName = "@Id";
+        var pDealId = cmd.CreateParameter(); pDealId.ParameterName = "@DealId";
+        var pOrig = cmd.CreateParameter(); pOrig.ParameterName = "@OriginalPrice";
+        var pCurr = cmd.CreateParameter(); pCurr.ParameterName = "@CurrentPrice";
+        var pDisc = cmd.CreateParameter(); pDisc.ParameterName = "@DiscountPercentage";
+        var pCurrency = cmd.CreateParameter(); pCurrency.ParameterName = "@Currency";
+        var pRecordedAt = cmd.CreateParameter(); pRecordedAt.ParameterName = "@RecordedAt";
+        cmd.Parameters.AddRange(new[] { pId, pDealId, pOrig, pCurr, pDisc, pCurrency, pRecordedAt });
+        pId.Value = Guid.NewGuid().ToString();
+        pDealId.Value = dealId;
+        pOrig.Value = originalPrice;
+        pCurr.Value = currentPrice;
+        pDisc.Value = discountPercentage;
+        pCurrency.Value = currency;
+        pRecordedAt.Value = DateTimeOffset.UtcNow.ToString("o");
+        await cmd.ExecuteNonQueryAsync(ct);
     }
 
     public async Task RecordPriceChangesAsync(IReadOnlyList<GameDeal> deals, CancellationToken ct)
@@ -261,24 +257,38 @@ public sealed class SqliteGameDealRepository : IGameDealRepository
 
         if (seenDealIds.Count == 0)
         {
-            // No deals seen — delete all deals
             cmd.CommandText = "DELETE FROM GameDeals;";
             await cmd.ExecuteNonQueryAsync(ct);
         }
         else
         {
-            // Build parameterized NOT IN clause
-            var placeholders = new List<string>(seenDealIds.Count);
-            for (var i = 0; i < seenDealIds.Count; i++)
+            // Use a temp table to avoid SQLite's parameter limit (999)
+            cmd.CommandText = "CREATE TEMP TABLE _SeenIds (Id TEXT NOT NULL);";
+            await cmd.ExecuteNonQueryAsync(ct);
+
+            // Batch insert seen IDs in chunks of 500
+            foreach (var chunk in seenDealIds.Chunk(500))
             {
-                var paramName = $"@Id{i}";
-                placeholders.Add(paramName);
-                var p = cmd.CreateParameter();
-                p.ParameterName = paramName;
-                p.Value = seenDealIds[i];
-                cmd.Parameters.Add(p);
+                var sb = new System.Text.StringBuilder("INSERT INTO _SeenIds (Id) VALUES ");
+                for (var i = 0; i < chunk.Length; i++)
+                {
+                    if (i > 0) sb.Append(", ");
+                    sb.Append($"(@Id{i})");
+                    var p = cmd.CreateParameter();
+                    p.ParameterName = $"@Id{i}";
+                    p.Value = chunk[i];
+                    cmd.Parameters.Add(p);
+                }
+                sb.Append(';');
+                cmd.CommandText = sb.ToString();
+                await cmd.ExecuteNonQueryAsync(ct);
+                cmd.Parameters.Clear();
             }
-            cmd.CommandText = $"DELETE FROM GameDeals WHERE Id NOT IN ({string.Join(", ", placeholders)});";
+
+            cmd.CommandText = "DELETE FROM GameDeals WHERE Id NOT IN (SELECT Id FROM _SeenIds);";
+            await cmd.ExecuteNonQueryAsync(ct);
+
+            cmd.CommandText = "DROP TABLE _SeenIds;";
             await cmd.ExecuteNonQueryAsync(ct);
         }
 

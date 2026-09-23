@@ -4,7 +4,7 @@ using GameDealWatcher.Domain.Interfaces;
 
 namespace GameDealWatcher.Infrastructure.Database;
 
-public sealed class JsonSettingsRepository : ISettingsRepository
+public sealed class JsonSettingsRepository : ISettingsRepository, IDisposable
 {
     private readonly string _filePath;
     private readonly SemaphoreSlim _semaphore = new(1, 1);
@@ -57,5 +57,10 @@ public sealed class JsonSettingsRepository : ISettingsRepository
         {
             _semaphore.Release();
         }
+    }
+
+    public void Dispose()
+    {
+        _semaphore.Dispose();
     }
 }

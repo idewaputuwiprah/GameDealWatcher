@@ -41,7 +41,6 @@ public partial class EpicViewModel : ObservableObject
     public async Task LoadDealsAsync()
     {
         _loadCts?.Cancel();
-        _loadCts?.Dispose();
         _loadCts = new CancellationTokenSource();
 
         try
