@@ -42,28 +42,40 @@ jobs:
       - name: Publish App (self-contained, MSBuild)
         run: msbuild src/GameDealWatcher.App/GameDealWatcher.App.csproj /t:Publish /p:Configuration=Release /p:RuntimeIdentifier=win-x64 /p:SelfContained=true /p:GenerateAppxPackageOnBuild=false
 
-      - name: Fix resources.pri (ensure resources.pri exists in publish dir)
+      - name: Fix PRI (copy app PRI to publish dir)
         run: |
           $binDir = "src/GameDealWatcher.App/bin/Release/net9.0-windows10.0.19041/win-x64"
           $publishDir = "src/GameDealWatcher.App/bin/Release/net9.0-windows10.0.19041/win-x64/publish"
-          $destPri = Join-Path $publishDir "resources.pri"
-          if (Test-Path $destPri) {
-            Write-Host "resources.pri already exists in publish dir"
-          } else {
-            $appPri = Join-Path $binDir "GameDealWatcher.App.pri"
-            if (Test-Path $appPri) {
-              Copy-Item $appPri $destPri -Force
-              Write-Host "Copied $appPri -> $destPri"
-            } else {
-              $resPri = Join-Path $binDir "resources.pri"
-              if (Test-Path $resPri) {
-                Copy-Item $resPri $destPri -Force
-                Write-Host "Copied $resPri -> $destPri"
-              } else {
-                Write-Host "::error::No PRI file found in bin dir"
-                exit 1
-              }
+          # Copy GameDealWatcher.App.pri to publish dir (with original name)
+          $appPri = Join-Path $binDir "GameDealWatcher.App.pri"
+          if (Test-Path $appPri) {
+            Copy-Item $appPri (Join-Path $publishDir "GameDealWatcher.App.pri") -Force
+            Write-Host "Copied GameDealWatcher.App.pri to publish dir"
+          }
+          # Also copy as resources.pri (the XAML runtime may look for this name)
+          $resPri = Join-Path $publishDir "resources.pri"
+          if (-not (Test-Path $resPri)) {
+            Copy-Item $appPri $resPri -Force
+            Write-Host "Also copied as resources.pri"
+          }
+
+      - name: Smoke Test (bin dir - test if app works from build output)
+        run: |
+          $exe = "src/GameDealWatcher.App/bin/Release/net9.0-windows10.0.19041/win-x64/GameDealWatcher.App.exe"
+          $crashLog = "$env:LOCALAPPDATA\GameDealWatcher\Logs\crash.log"
+          if (Test-Path $crashLog) { Remove-Item $crashLog }
+          Write-Host "Launching from bin dir: $exe ..."
+          $p = Start-Process -FilePath $exe -PassThru
+          Start-Sleep -Seconds 10
+          if ($p.HasExited) {
+            Write-Host "::error::Bin dir: App exited with code $($p.ExitCode)"
+            if (Test-Path $crashLog) {
+              Write-Host "::error::Bin crash log:"
+              Get-Content $crashLog | ForEach-Object { Write-Host "::error::$_" }
             }
+          } else {
+            Write-Host "Bin dir: App launched successfully (PID $($p.Id)). Stopping..."
+            Stop-Process -Id $p.Id -Force
           }
 
       - name: Diagnose PRI generation
