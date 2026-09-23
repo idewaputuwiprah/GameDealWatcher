@@ -13,9 +13,7 @@
     <WindowsSdkPackageVersion>10.0.19041.38</WindowsSdkPackageVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <GenerateAppxPackageOnBuild>false</GenerateAppxPackageOnBuild>
-    <EnableMsixTooling>true</EnableMsixTooling>
-    <EnablePriGenTooling>true</EnablePriGenTooling>
-    <AppxGeneratePriEnabled>true</AppxGeneratePriEnabled>
+    <DefaultLanguage>en-US</DefaultLanguage>
   </PropertyGroup>
 
   <ItemGroup>

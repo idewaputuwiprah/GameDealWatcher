@@ -33,3 +33,10 @@ _build_output/
 # Build artifacts (downloaded from CI)
 *.zip
 GameDealWatcher-windows-x64/
+
+# AI tool configs
+.claude/
+.clinerules/
+.universal-studio/
+.vscode/
+check-ci.ps1
