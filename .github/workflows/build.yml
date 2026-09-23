@@ -45,19 +45,42 @@ jobs:
       - name: Fix PRI (copy app PRI to publish dir)
         run: |
           $binDir = "src/GameDealWatcher.App/bin/Release/net9.0-windows10.0.19041/win-x64"
-          $publishDir = "src/GameDealWatcher.App/bin/Release/net9.0-windows10.0.19041/win-x64/publish"
-          # Copy GameDealWatcher.App.pri to publish dir (with original name)
-          $appPri = Join-Path $binDir "GameDealWatcher.App.pri"
-          if (Test-Path $appPri) {
-            Copy-Item $appPri (Join-Path $publishDir "GameDealWatcher.App.pri") -Force
-            Write-Host "Copied GameDealWatcher.App.pri to publish dir"
+          $publishDir = "$binDir/publish"
+          $objDir = "src/GameDealWatcher.App/obj/Release/net9.0-windows10.0.19041/win-x64"
+
+          # PRIs owned by the Windows App SDK - never treat these as the app PRI
+          $sdkPris = @('Microsoft.UI.pri','Microsoft.UI.Xaml.Controls.pri','Microsoft.Windows.Workloads.pri','Microsoft.WindowsAppRuntime.pri')
+
+          # Known WindowsAppSDK issue: msbuild /t:Publish does not copy the app PRI into
+          # the publish folder. Locate it in bin or obj - depending on SDK version it may
+          # be named GameDealWatcher.App.pri or resources.pri.
+          $candidates = @()
+          foreach ($d in @($binDir, $objDir)) {
+            if (Test-Path $d) {
+              $candidates += Get-ChildItem $d -Filter *.pri -File -ErrorAction SilentlyContinue |
+                Where-Object { $sdkPris -notcontains $_.Name }
+            }
           }
-          # Also copy as resources.pri (the XAML runtime may look for this name)
-          $resPri = Join-Path $publishDir "resources.pri"
-          if (-not (Test-Path $resPri)) {
-            Copy-Item $appPri $resPri -Force
-            Write-Host "Also copied as resources.pri"
+          if (-not $candidates) {
+            $candidates = Get-ChildItem $objDir -Filter *.pri -File -Recurse -ErrorAction SilentlyContinue |
+              Where-Object { $sdkPris -notcontains $_.Name }
           }
+
+          if (-not $candidates) {
+            Write-Host "::error::App PRI not found in bin or obj - the app will crash at startup (0xC000027B). PRI inventory:"
+            if (Test-Path $binDir) { Get-ChildItem $binDir -Filter *.pri | ForEach-Object { Write-Host "::error::  bin: $($_.Name)" } }
+            if (Test-Path $objDir) { Get-ChildItem $objDir -Filter *.pri -Recurse | ForEach-Object { Write-Host "::error::  obj: $($_.FullName)" } }
+            exit 1
+          }
+
+          $appPri = @($candidates)[0].FullName
+          Write-Host "App PRI found: $appPri"
+
+          # MRT Core resolves unpackaged app resources via <exe-name>.pri or resources.pri;
+          # provide both names so either lookup succeeds.
+          Copy-Item $appPri (Join-Path $publishDir 'GameDealWatcher.App.pri') -Force
+          Copy-Item $appPri (Join-Path $publishDir 'resources.pri') -Force
+          Write-Host "Copied app PRI to publish dir as GameDealWatcher.App.pri and resources.pri"
 
       - name: Smoke Test (bin dir - test if app works from build output)
         run: |
@@ -78,41 +101,6 @@ jobs:
             Stop-Process -Id $p.Id -Force
           }
 
-      - name: Diagnose PRI generation
-        run: |
-          $publishDir = "src/GameDealWatcher.App/bin/Release/net9.0-windows10.0.19041/win-x64/publish"
-          $binDir = "src/GameDealWatcher.App/bin/Release/net9.0-windows10.0.19041/win-x64"
-          $objDir = "src/GameDealWatcher.App/obj/Release/net9.0-windows10.0.19041/win-x64"
-          Write-Host "=== Checking publish dir for PRI ==="
-          $publishPri = Get-ChildItem $publishDir -Filter *.pri -ErrorAction SilentlyContinue
-          if ($publishPri) {
-            $publishPri | ForEach-Object { Write-Host "::error::PRI in publish: $($_.Name)" }
-          } else {
-            Write-Host "::error::No PRI in publish dir"
-          }
-          Write-Host "=== Checking bin dir for PRI ==="
-          $binPri = Get-ChildItem $binDir -Filter *.pri -ErrorAction SilentlyContinue
-          if ($binPri) {
-            $binPri | ForEach-Object { Write-Host "::error::PRI in bin: $($_.Name)" }
-          } else {
-            Write-Host "::error::No PRI in bin dir"
-          }
-          Write-Host "=== Checking obj dir for PRI ==="
-          $objPri = Get-ChildItem $objDir -Filter *.pri -Recurse -ErrorAction SilentlyContinue
-          if ($objPri) {
-            $objPri | ForEach-Object { Write-Host "::error::PRI in obj: $($_.FullName)" }
-          } else {
-            Write-Host "::error::No PRI in obj dir"
-          }
-          Write-Host "=== All files in publish dir (first 30) ==="
-          Get-ChildItem $publishDir -ErrorAction SilentlyContinue | Select-Object -First 30 | ForEach-Object { Write-Host "::error::FILE: $($_.Name)" }
-          $priFile = Join-Path $publishDir "resources.pri"
-          if (Test-Path $priFile) {
-            Write-Host "resources.pri EXISTS in publish dir"
-          } else {
-            Write-Host "::error::resources.pri NOT FOUND in publish dir"
-          }
-
       - name: Smoke Test (launch exe, verify no crash)
         run: |
           $exe = "src/GameDealWatcher.App/bin/Release/net9.0-windows10.0.19041/win-x64/publish/GameDealWatcher.App.exe"
@@ -128,11 +116,20 @@ jobs:
           Start-Sleep -Seconds 10
 
           if ($p.HasExited) {
-            Write-Host "::error::App process exited prematurely with code $($p.ExitCode)"
+            Write-Host "::error::App process exited prematurely with code $($p.ExitCode) (hex: 0x$('{0:X8}' -f ($p.ExitCode -band 0xFFFFFFFF)))"
             if (Test-Path $crashLog) {
               Write-Host "::error::Crash log contents:"
               Get-Content $crashLog | ForEach-Object { Write-Host "::error::$_" }
+            } else {
+              Write-Host "::error::No crash.log written - failure happened before OnLaunched (likely XAML/resource loading, e.g. missing app PRI)."
             }
+            # Surface the actual exception from the Windows Application event log
+            try {
+              Get-WinEvent -FilterHashtable @{ LogName = 'Application'; StartTime = (Get-Date).AddMinutes(-5) } -ErrorAction SilentlyContinue |
+                Where-Object { $_.Message -like '*GameDealWatcher*' } |
+                Select-Object -First 5 |
+                ForEach-Object { Write-Host "::error::EventLog: $($_.Message)" }
+            } catch { }
             exit 1
           }
 
