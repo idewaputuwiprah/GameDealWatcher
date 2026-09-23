@@ -48,13 +48,28 @@ jobs:
           $binDir = "src/GameDealWatcher.App/bin/Release/net9.0-windows10.0.19041/win-x64"
           $objDir = "src/GameDealWatcher.App/obj/Release/net9.0-windows10.0.19041/win-x64"
           Write-Host "=== Checking publish dir for PRI ==="
-          Get-ChildItem $publishDir -Filter *.pri -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.FullName }
+          $publishPri = Get-ChildItem $publishDir -Filter *.pri -ErrorAction SilentlyContinue
+          if ($publishPri) {
+            $publishPri | ForEach-Object { Write-Host "::error::PRI in publish: $($_.Name)" }
+          } else {
+            Write-Host "::error::No PRI in publish dir"
+          }
           Write-Host "=== Checking bin dir for PRI ==="
-          Get-ChildItem $binDir -Filter *.pri -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.FullName }
+          $binPri = Get-ChildItem $binDir -Filter *.pri -ErrorAction SilentlyContinue
+          if ($binPri) {
+            $binPri | ForEach-Object { Write-Host "::error::PRI in bin: $($_.Name)" }
+          } else {
+            Write-Host "::error::No PRI in bin dir"
+          }
           Write-Host "=== Checking obj dir for PRI ==="
-          Get-ChildItem $objDir -Filter *.pri -Recurse -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.FullName }
-          Write-Host "=== All files in publish dir ==="
-          Get-ChildItem $publishDir | ForEach-Object { Write-Host $_.Name }
+          $objPri = Get-ChildItem $objDir -Filter *.pri -Recurse -ErrorAction SilentlyContinue
+          if ($objPri) {
+            $objPri | ForEach-Object { Write-Host "::error::PRI in obj: $($_.FullName)" }
+          } else {
+            Write-Host "::error::No PRI in obj dir"
+          }
+          Write-Host "=== All files in publish dir (first 30) ==="
+          Get-ChildItem $publishDir -ErrorAction SilentlyContinue | Select-Object -First 30 | ForEach-Object { Write-Host "::error::FILE: $($_.Name)" }
           $priFile = Join-Path $publishDir "resources.pri"
           if (Test-Path $priFile) {
             Write-Host "resources.pri EXISTS in publish dir"
