@@ -7,6 +7,7 @@ using GameDealWatcher.Infrastructure.Http;
 using GameDealWatcher.Infrastructure.Images;
 using GameDealWatcher.Infrastructure.Notifications;
 using GameDealWatcher.Infrastructure.Providers;
+using GameDealWatcher.Infrastructure.Startup;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
@@ -114,6 +115,7 @@ public partial class App : Microsoft.UI.Xaml.Application
 
         services.AddSingleton<IImageCacheService, ImageCacheService>();
         services.AddSingleton<INotificationService>(_ => new WindowsNotificationService(_.GetRequiredService<ILogger<WindowsNotificationService>>()));
+        services.AddSingleton<IStartupService, WindowsStartupService>();
         services.AddSingleton<IGameDealService, GameDealService>();
 
         services.AddSingleton<DashboardViewModel>();
@@ -136,7 +138,7 @@ public partial class App : Microsoft.UI.Xaml.Application
             "GameDealWatcher", "Database");
         Directory.CreateDirectory(dbDir);
         var dbPath = Path.Combine(dbDir, "game_deals.db");
-        return $"Data Source={dbPath}";
+        return $"Data Source={dbPath};Foreign Keys=True";
     }
 
     private static string GetSettingsPath()

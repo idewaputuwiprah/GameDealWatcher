@@ -10,7 +10,7 @@ public class GameDealRepositoryTests
     private static async Task<(SqliteGameDealRepository repo, SqliteConnection keepAlive)> CreateTestRepoAsync()
     {
         var dbName = $"TestDb_{Guid.NewGuid()}";
-        var connStr = $"Data Source={dbName};Mode=Memory;Cache=Shared";
+        var connStr = $"Data Source={dbName};Mode=Memory;Cache=Shared;Foreign Keys=True";
         var keepAlive = new SqliteConnection(connStr);
         await keepAlive.OpenAsync();
         await DatabaseInitializer.InitializeAsync(connStr, CancellationToken.None);
@@ -24,6 +24,15 @@ public class GameDealRepositoryTests
             originalPrice, currentPrice, discountPct, "USD",
             $"https://store.example.com/app/{providerGameId}/",
             null, null, null, null, false, false, null, null, null, null);
+
+    private static async Task<int> CountDealHistoryRowsAsync(string connectionString)
+    {
+        await using var conn = new SqliteConnection(connectionString);
+        await conn.OpenAsync();
+        var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT COUNT(*) FROM DealHistory;";
+        return Convert.ToInt32(await cmd.ExecuteScalarAsync());
+    }
 
     [Fact]
     public async Task InsertAndGetDeals_ReturnsCorrectCount()
@@ -127,7 +136,7 @@ public class GameDealRepositoryTests
             await repo.InsertDealsAsync(deals, CancellationToken.None);
 
             // Keep only deals 1 and 3 — deal 2 should be deleted
-            await repo.DeleteDealsNotSeenAsync(new[] { "1", "3" }, CancellationToken.None);
+            await repo.DeleteDealsNotSeenAsync("Steam", new[] { "1", "3" }, CancellationToken.None);
 
             var result = await repo.GetAllDealsAsync(CancellationToken.None);
             Assert.Equal(2, result.Count);
@@ -154,10 +163,109 @@ public class GameDealRepositoryTests
             };
             await repo.InsertDealsAsync(deals, CancellationToken.None);
 
-            await repo.DeleteDealsNotSeenAsync(Array.Empty<string>(), CancellationToken.None);
+            await repo.DeleteDealsNotSeenAsync("Steam", Array.Empty<string>(), CancellationToken.None);
 
             var result = await repo.GetAllDealsAsync(CancellationToken.None);
             Assert.Empty(result);
+        }
+        finally
+        {
+            keepAlive.Dispose();
+        }
+    }
+
+    [Fact]
+    public async Task DeleteDealsNotSeen_OnlyAffectsSpecifiedProvider()
+    {
+        var (repo, keepAlive) = await CreateTestRepoAsync();
+        try
+        {
+            var deals = new[]
+            {
+                CreateDeal("steam_1", "1", "Steam", "Steam Game", 59.99m, 29.99m, 50),
+                CreateDeal("epic_1", "1", "Epic", "Epic Game", 0m, 0m, 0)
+            };
+            await repo.InsertDealsAsync(deals, CancellationToken.None);
+
+            // Steam's refresh saw nothing this cycle — only Steam's deals should be pruned
+            await repo.DeleteDealsNotSeenAsync("Steam", Array.Empty<string>(), CancellationToken.None);
+
+            var result = await repo.GetAllDealsAsync(CancellationToken.None);
+            Assert.Single(result);
+            Assert.Equal("epic_1", result[0].Id);
+        }
+        finally
+        {
+            keepAlive.Dispose();
+        }
+    }
+
+    [Fact]
+    public async Task DeletingDeal_CascadesToDealHistory_WhenForeignKeysEnabled()
+    {
+        var (repo, keepAlive) = await CreateTestRepoAsync();
+        try
+        {
+            var deal = CreateDeal("1", "steam1", "Steam", "Test Game", 59.99m, 29.99m, 50);
+            await repo.InsertDealsAsync(new[] { deal }, CancellationToken.None);
+            await repo.RecordPriceChangesAsync(new[] { deal }, CancellationToken.None);
+
+            Assert.Equal(1, await CountDealHistoryRowsAsync(keepAlive.ConnectionString));
+
+            // Steam's refresh saw nothing this cycle, so the deal (and its history via
+            // ON DELETE CASCADE) should be removed now that Foreign Keys=True is set.
+            await repo.DeleteDealsNotSeenAsync("Steam", Array.Empty<string>(), CancellationToken.None);
+
+            Assert.Equal(0, await CountDealHistoryRowsAsync(keepAlive.ConnectionString));
+        }
+        finally
+        {
+            keepAlive.Dispose();
+        }
+    }
+
+    [Fact]
+    public async Task Migration_CleansUpOrphanedDealHistory_FromBeforeForeignKeysWereEnabled()
+    {
+        var dbName = $"TestDb_{Guid.NewGuid()}";
+        // No "Foreign Keys=True" here — this reproduces the pre-fix connection string,
+        // where deleting a GameDeal left its DealHistory rows orphaned.
+        var legacyConnStr = $"Data Source={dbName};Mode=Memory;Cache=Shared";
+        var keepAlive = new SqliteConnection(legacyConnStr);
+        await keepAlive.OpenAsync();
+        try
+        {
+            await DatabaseInitializer.InitializeAsync(legacyConnStr, CancellationToken.None);
+
+            var repo = new SqliteGameDealRepository(legacyConnStr);
+            var deal = CreateDeal("1", "steam1", "Steam", "Test Game", 59.99m, 29.99m, 50);
+            await repo.InsertDealsAsync(new[] { deal }, CancellationToken.None);
+            await repo.RecordPriceChangesAsync(new[] { deal }, CancellationToken.None);
+
+            await using (var conn = new SqliteConnection(legacyConnStr))
+            {
+                await conn.OpenAsync();
+                var cmd = conn.CreateCommand();
+                cmd.CommandText = "DELETE FROM GameDeals WHERE Id = '1';";
+                await cmd.ExecuteNonQueryAsync();
+            }
+
+            // Roll the recorded schema version back to simulate a DB created before this fix shipped
+            await using (var conn = new SqliteConnection(legacyConnStr))
+            {
+                await conn.OpenAsync();
+                var cmd = conn.CreateCommand();
+                cmd.CommandText = "UPDATE Settings SET Value = '1' WHERE Key = 'SchemaVersion';";
+                await cmd.ExecuteNonQueryAsync();
+            }
+
+            Assert.Equal(1, await CountDealHistoryRowsAsync(legacyConnStr));
+
+            // Re-running InitializeAsync, as happens on every app launch, should now migrate
+            // to schema version 2 and purge the orphaned history row.
+            await DatabaseInitializer.InitializeAsync(legacyConnStr, CancellationToken.None);
+
+            Assert.Equal(0, await CountDealHistoryRowsAsync(legacyConnStr));
         }
         finally
         {

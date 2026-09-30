@@ -1,3 +1,4 @@
+using System.Net;
 using Microsoft.Extensions.DependencyInjection;
 using Polly;
 using Polly.Extensions.Http;
@@ -12,9 +13,12 @@ public static class HttpClientConfiguration
 
     public static void AddHttpClients(this IServiceCollection services)
     {
-        // Retry policy: 2 retries with exponential backoff (2s, 4s)
+        // Retry policy: 2 retries with exponential backoff (2s, 4s).
+        // HandleTransientHttpError() only covers 5xx/408/HttpRequestException, so
+        // 429 (Too Many Requests) is added explicitly to actually get backoff-retried.
         var retryPolicy = HttpPolicyExtensions
             .HandleTransientHttpError()
+            .OrResult(r => r.StatusCode == HttpStatusCode.TooManyRequests)
             .WaitAndRetryAsync(2, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
 
         services.AddHttpClient(HttpClientConfiguration.SteamHandlerName, client =>

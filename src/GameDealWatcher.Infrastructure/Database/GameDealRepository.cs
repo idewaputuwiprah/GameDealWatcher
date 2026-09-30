@@ -179,30 +179,6 @@ public sealed class SqliteGameDealRepository : IGameDealRepository
         await cmd.ExecuteNonQueryAsync(ct);
     }
 
-    public async Task RecordPriceChangeAsync(string dealId, decimal originalPrice, decimal currentPrice, int discountPercentage, string currency, CancellationToken ct)
-    {
-        await using var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync(ct);
-        var cmd = connection.CreateCommand();
-        cmd.CommandText = @"INSERT INTO DealHistory (Id, DealId, OriginalPrice, CurrentPrice, DiscountPercentage, Currency, RecordedAt) VALUES (@Id, @DealId, @OriginalPrice, @CurrentPrice, @DiscountPercentage, @Currency, @RecordedAt);";
-        var pId = cmd.CreateParameter(); pId.ParameterName = "@Id";
-        var pDealId = cmd.CreateParameter(); pDealId.ParameterName = "@DealId";
-        var pOrig = cmd.CreateParameter(); pOrig.ParameterName = "@OriginalPrice";
-        var pCurr = cmd.CreateParameter(); pCurr.ParameterName = "@CurrentPrice";
-        var pDisc = cmd.CreateParameter(); pDisc.ParameterName = "@DiscountPercentage";
-        var pCurrency = cmd.CreateParameter(); pCurrency.ParameterName = "@Currency";
-        var pRecordedAt = cmd.CreateParameter(); pRecordedAt.ParameterName = "@RecordedAt";
-        cmd.Parameters.AddRange(new[] { pId, pDealId, pOrig, pCurr, pDisc, pCurrency, pRecordedAt });
-        pId.Value = Guid.NewGuid().ToString();
-        pDealId.Value = dealId;
-        pOrig.Value = originalPrice;
-        pCurr.Value = currentPrice;
-        pDisc.Value = discountPercentage;
-        pCurrency.Value = currency;
-        pRecordedAt.Value = DateTimeOffset.UtcNow.ToString("o");
-        await cmd.ExecuteNonQueryAsync(ct);
-    }
-
     public async Task RecordPriceChangesAsync(IReadOnlyList<GameDeal> deals, CancellationToken ct)
     {
         await using var connection = new SqliteConnection(_connectionString);
@@ -247,7 +223,7 @@ public sealed class SqliteGameDealRepository : IGameDealRepository
         await cmd.ExecuteNonQueryAsync(ct);
     }
 
-    public async Task DeleteDealsNotSeenAsync(IReadOnlyList<string> seenDealIds, CancellationToken ct)
+    public async Task DeleteDealsNotSeenAsync(string providerName, IReadOnlyList<string> seenDealIds, CancellationToken ct)
     {
         await using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync(ct);
@@ -257,7 +233,11 @@ public sealed class SqliteGameDealRepository : IGameDealRepository
 
         if (seenDealIds.Count == 0)
         {
-            cmd.CommandText = "DELETE FROM GameDeals;";
+            cmd.CommandText = "DELETE FROM GameDeals WHERE ProviderName = @ProviderName;";
+            var pProvider = cmd.CreateParameter();
+            pProvider.ParameterName = "@ProviderName";
+            pProvider.Value = providerName;
+            cmd.Parameters.Add(pProvider);
             await cmd.ExecuteNonQueryAsync(ct);
         }
         else
@@ -285,7 +265,11 @@ public sealed class SqliteGameDealRepository : IGameDealRepository
                 cmd.Parameters.Clear();
             }
 
-            cmd.CommandText = "DELETE FROM GameDeals WHERE Id NOT IN (SELECT Id FROM _SeenIds);";
+            cmd.CommandText = "DELETE FROM GameDeals WHERE ProviderName = @ProviderName AND Id NOT IN (SELECT Id FROM _SeenIds);";
+            var pProviderScoped = cmd.CreateParameter();
+            pProviderScoped.ParameterName = "@ProviderName";
+            pProviderScoped.Value = providerName;
+            cmd.Parameters.Add(pProviderScoped);
             await cmd.ExecuteNonQueryAsync(ct);
 
             cmd.CommandText = "DROP TABLE _SeenIds;";

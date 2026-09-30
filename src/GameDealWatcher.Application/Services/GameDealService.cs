@@ -52,8 +52,8 @@ public sealed class GameDealService : IGameDealService
         var refreshTasks = _providers.Select(p => RefreshProviderAsync(p, ct)).ToList();
         var providerResults = await Task.WhenAll(refreshTasks);
 
-        // 3. Collect all results
-        var allNewDeals = providerResults.SelectMany(d => d).ToList();
+        // 3. Collect all results (only from providers that actually succeeded this cycle)
+        var allNewDeals = providerResults.Where(r => r.Success).SelectMany(r => r.Deals).ToList();
 
         // 4. Compare old vs new — record price changes + detect new deals
         var newDealNotifications = new List<GameDeal>();
@@ -80,11 +80,17 @@ public sealed class GameDealService : IGameDealService
         // 6. Only mark refresh if at least one provider returned data
         if (allNewDeals.Count > 0)
         {
-            // Delete deals that were not seen in this refresh (no longer active)
+            // Delete deals that were not seen in this refresh (no longer active).
+            // Scoped per successful provider — a provider that failed this cycle keeps
+            // its previously cached deals untouched instead of having them wiped out
+            // just because a *different* provider's IDs weren't in a combined seen-set.
             try
             {
-                var seenIds = allNewDeals.Select(d => d.Id).ToList();
-                await _repository.DeleteDealsNotSeenAsync(seenIds, ct);
+                foreach (var result in providerResults.Where(r => r.Success))
+                {
+                    var seenIds = result.Deals.Select(d => d.Id).ToList();
+                    await _repository.DeleteDealsNotSeenAsync(result.ProviderName, seenIds, ct);
+                }
             }
             catch (Exception ex)
             {
@@ -118,7 +124,7 @@ public sealed class GameDealService : IGameDealService
         _logger.LogInformation("All refreshes complete at {Time}", DateTimeOffset.UtcNow);
     }
 
-    private async Task<List<GameDeal>> RefreshProviderAsync(IGameDealProvider provider, CancellationToken ct)
+    private async Task<ProviderRefreshResult> RefreshProviderAsync(IGameDealProvider provider, CancellationToken ct)
     {
         try
         {
@@ -126,7 +132,7 @@ public sealed class GameDealService : IGameDealService
             await _repository.InsertDealsAsync(deals, ct);
             await _repository.RecordRefreshAsync(provider.ProviderName, true, deals.Count, null, ct);
             _logger.LogInformation("{Provider} refresh complete: {Count} deals", provider.ProviderName, deals.Count);
-            return deals;
+            return new ProviderRefreshResult(provider.ProviderName, true, deals);
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex)
@@ -140,9 +146,11 @@ public sealed class GameDealService : IGameDealService
                 _logger.LogError(logEx, "Failed to record refresh failure for {Provider}", provider.ProviderName);
             }
             _logger.LogError(ex, "{Provider} refresh failed", provider.ProviderName);
-            return [];
+            return new ProviderRefreshResult(provider.ProviderName, false, []);
         }
     }
+
+    private sealed record ProviderRefreshResult(string ProviderName, bool Success, List<GameDeal> Deals);
 
     private void SendNotifications(List<GameDeal> newDeals, AppSettings settings)
     {

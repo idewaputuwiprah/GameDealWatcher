@@ -10,6 +10,7 @@ public partial class SettingsViewModel : ObservableObject
 {
     private readonly IImageCacheService _imageCacheService;
     private readonly ISettingsRepository _settingsRepository;
+    private readonly IStartupService _startupService;
 
     [ObservableProperty]
     private TimeSpan refreshInterval = TimeSpan.FromHours(24);
@@ -29,10 +30,11 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private int minimumSteamDiscount = 0;
 
-    public SettingsViewModel(IImageCacheService imageCacheService, ISettingsRepository settingsRepository)
+    public SettingsViewModel(IImageCacheService imageCacheService, ISettingsRepository settingsRepository, IStartupService startupService)
     {
         _imageCacheService = imageCacheService;
         _settingsRepository = settingsRepository;
+        _startupService = startupService;
     }
 
     public async Task InitializeAsync()
@@ -72,6 +74,8 @@ public partial class SettingsViewModel : ObservableObject
                 SteamNotifications = SteamNotifications,
                 MinimumSteamDiscount = MinimumSteamDiscount
             }, CancellationToken.None);
+
+            _startupService.SetStartWithWindows(StartWithWindows);
         }
         catch (Exception ex)
         {

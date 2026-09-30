@@ -174,6 +174,11 @@ public class GameDealServiceTests
         repoMock.Verify(r => r.InsertDealsAsync(It.Is<IReadOnlyList<GameDeal>>(l => l.Count == 1), It.IsAny<CancellationToken>()), Times.Once);
         repoMock.Verify(r => r.RecordRefreshAsync(ProviderNames.Epic, false, 0, It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
         repoMock.Verify(r => r.RecordRefreshAsync(ProviderNames.Steam, true, 1, null, It.IsAny<CancellationToken>()), Times.Once);
+
+        // The failed provider (Epic) must NOT have its previously cached deals pruned —
+        // only the successful provider (Steam) gets its seen-set applied.
+        repoMock.Verify(r => r.DeleteDealsNotSeenAsync(ProviderNames.Steam, It.Is<IReadOnlyList<string>>(l => l.Contains("steam_1")), It.IsAny<CancellationToken>()), Times.Once);
+        repoMock.Verify(r => r.DeleteDealsNotSeenAsync(ProviderNames.Epic, It.IsAny<IReadOnlyList<string>>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -236,6 +241,6 @@ public class GameDealServiceTests
 
         await service.RefreshAllDealsAsync(CancellationToken.None);
 
-        repoMock.Verify(r => r.DeleteDealsNotSeenAsync(It.Is<IReadOnlyList<string>>(l => l.Contains("steam_1")), It.IsAny<CancellationToken>()), Times.Once);
+        repoMock.Verify(r => r.DeleteDealsNotSeenAsync(ProviderNames.Steam, It.Is<IReadOnlyList<string>>(l => l.Contains("steam_1")), It.IsAny<CancellationToken>()), Times.Once);
     }
 }
