@@ -4,7 +4,7 @@ namespace GameDealWatcher.Infrastructure.Database;
 
 public static class DatabaseInitializer
 {
-    private const int CurrentSchemaVersion = 2;
+    private const int CurrentSchemaVersion = 1;
 
     public static async Task InitializeAsync(string connectionString, CancellationToken ct)
     {
@@ -110,19 +110,8 @@ public static class DatabaseInitializer
 
         if (currentVersion >= CurrentSchemaVersion) return;
 
-        if (currentVersion < 2)
-        {
-            // Older DBs were created before foreign-key enforcement was turned on, so
-            // DealHistory's "ON DELETE CASCADE" never actually fired — clean up the
-            // orphaned rows it should have removed.
-            var cleanupCmd = connection.CreateCommand();
-            cleanupCmd.CommandText = "DELETE FROM DealHistory WHERE DealId NOT IN (SELECT Id FROM GameDeals);";
-            await cleanupCmd.ExecuteNonQueryAsync(ct);
-            currentVersion = 2;
-        }
-
         // Future migrations go here:
-        // if (currentVersion < 3) { ... run ALTER TABLE ...; currentVersion = 3; }
+        // if (currentVersion < 2) { ... run ALTER TABLE ...; currentVersion = 2; }
 
         // Record the schema version
         var updateCmd = connection.CreateCommand();
