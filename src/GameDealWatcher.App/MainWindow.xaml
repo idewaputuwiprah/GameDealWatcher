@@ -3,22 +3,28 @@
          xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
          xmlns:vm="using:GameDealWatcher.App.ViewModels"
          Title="GameDealWatcher">
-    <Grid>
+    <Grid Background="{StaticResource SteamAppBackgroundBrush}" RequestedTheme="Dark">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="200"/>
+            <ColumnDefinition Width="220"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <StackPanel Grid.Column="0" Margin="12">
-            <TextBlock Text="GameDealWatcher" Style="{StaticResource TitleTextBlockStyle}" Margin="0,0,0,12"/>
-            <Button Content="Dashboard" Command="{x:Bind ViewModel.ShowDashboardCommand}" AutomationProperties.AutomationId="NavDashboard" Margin="0,0,0,4"/>
-            <Button Content="Epic Free Games" Command="{x:Bind ViewModel.ShowEpicCommand}" AutomationProperties.AutomationId="NavEpic" Margin="0,0,0,4"/>
-            <Button Content="Steam Deals" Command="{x:Bind ViewModel.ShowSteamCommand}" AutomationProperties.AutomationId="NavSteam" Margin="0,0,0,4"/>
-            <Button Content="Settings" Command="{x:Bind ViewModel.ShowSettingsCommand}" AutomationProperties.AutomationId="NavSettings" Margin="0,0,0,4"/>
-            <Button Content="Refresh" Command="{x:Bind ViewModel.ExecuteRefreshCommand}" AutomationProperties.AutomationId="BtnRefresh" Margin="0,24,0,0"/>
-            <TextBlock Text="{x:Bind ViewModel.LastUpdatedText}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Style="{StaticResource CaptionTextBlockStyle}"/>
+        <StackPanel Grid.Column="0" Background="{StaticResource SteamPanelBackgroundBrush}" Padding="0,20,0,20">
+            <TextBlock Text="GAMEDEALWATCHER" Foreground="{StaticResource SteamHeadingTextBrush}" FontWeight="Bold" FontSize="16" Margin="16,0,16,20"/>
+
+            <Button Content="Dashboard" Style="{StaticResource SteamNavButtonStyle}" Command="{x:Bind ViewModel.ShowDashboardCommand}" AutomationProperties.AutomationId="NavDashboard" Margin="8,0,8,2"/>
+            <Button Content="Epic Free Games" Style="{StaticResource SteamNavButtonStyle}" Command="{x:Bind ViewModel.ShowEpicCommand}" AutomationProperties.AutomationId="NavEpic" Margin="8,0,8,2"/>
+            <Button Content="Steam Deals" Style="{StaticResource SteamNavButtonStyle}" Command="{x:Bind ViewModel.ShowSteamCommand}" AutomationProperties.AutomationId="NavSteam" Margin="8,0,8,2"/>
+            <Button Content="Settings" Style="{StaticResource SteamNavButtonStyle}" Command="{x:Bind ViewModel.ShowSettingsCommand}" AutomationProperties.AutomationId="NavSettings" Margin="8,0,8,2"/>
+
+            <Border Height="1" Background="{StaticResource SteamDividerBrush}" Margin="16,20"/>
+
+            <Button Content="Refresh Now" Style="{StaticResource SteamAccentButtonStyle}" Command="{x:Bind ViewModel.ExecuteRefreshCommand}" AutomationProperties.AutomationId="BtnRefresh" Margin="16,0" HorizontalAlignment="Stretch"/>
+            <TextBlock Text="{x:Bind ViewModel.LastUpdatedText, Mode=OneWay}" Foreground="{StaticResource SteamMutedTextBrush}" FontSize="12" Margin="16,8,16,0"/>
         </StackPanel>
 
-        <Frame x:Name="ContentFrame" Grid.Column="1" Margin="12"/>
+        <Grid Grid.Column="1" Background="{StaticResource SteamAppBackgroundBrush}">
+            <Frame x:Name="ContentFrame"/>
+        </Grid>
     </Grid>
 </Window>
