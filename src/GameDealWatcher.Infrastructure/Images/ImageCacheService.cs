@@ -41,7 +41,9 @@ public sealed class ImageCacheService : IImageCacheService
 
         if (File.Exists(filePath)) return filePath;
 
-        var tmpPath = filePath + ".tmp";
+        // Unique tmp name per download so concurrent requests for the same URL
+        // don't collide on FileShare.None; the atomic rename below is last-writer-wins.
+        var tmpPath = $"{filePath}.{Guid.NewGuid():N}.tmp";
         try
         {
             var client = _httpClientFactory.CreateClient(HttpClientConfiguration.ImageCacheHandlerName);

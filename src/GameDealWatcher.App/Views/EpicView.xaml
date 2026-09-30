@@ -1,7 +1,8 @@
 <UserControl x:Class="GameDealWatcher.App.Views.EpicView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:models="using:GameDealWatcher.Domain.Entities">
+             xmlns:models="using:GameDealWatcher.Domain.Entities"
+             xmlns:views="using:GameDealWatcher.App.Views">
     <Grid Background="{StaticResource SteamAppBackgroundBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -23,32 +24,7 @@
                 </GridView.ItemsPanel>
                 <GridView.ItemTemplate>
                     <DataTemplate x:DataType="models:GameDeal">
-                        <Grid Width="230" Margin="6" Background="{StaticResource SteamCardBackgroundBrush}" CornerRadius="4">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="110"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-
-                            <Grid Grid.Row="0">
-                                <Image Source="{x:Bind ImageUrl, Converter={StaticResource ImageUrlConverter}}" Stretch="UniformToFill"/>
-                                <Border Background="{StaticResource SteamFreeBadgeBrush}" HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                                        Padding="6,3" Margin="6" CornerRadius="2"
-                                        Visibility="{x:Bind IsCurrentlyFree, Converter={StaticResource BoolToVisibilityConverter}}">
-                                    <TextBlock Text="FREE NOW" Foreground="{StaticResource SteamDiscountTextBrush}" FontWeight="Bold" FontSize="12"/>
-                                </Border>
-                                <Border Background="{StaticResource SteamUpcomingBadgeBrush}" HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                                        Padding="6,3" Margin="6" CornerRadius="2"
-                                        Visibility="{x:Bind IsUpcoming, Converter={StaticResource BoolToVisibilityConverter}}">
-                                    <TextBlock Text="UPCOMING" Foreground="{StaticResource SteamPrimaryTextBrush}" FontWeight="Bold" FontSize="12"/>
-                                </Border>
-                            </Grid>
-
-                            <StackPanel Grid.Row="1" Background="{StaticResource SteamCardFooterBackgroundBrush}" Padding="10">
-                                <TextBlock Text="{x:Bind Title}" Foreground="{StaticResource SteamHeadingTextBrush}" FontWeight="SemiBold"
-                                           TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"/>
-                                <TextBlock Text="{x:Bind EndsAt}" Foreground="{StaticResource SteamMutedTextBrush}" FontSize="12" Margin="0,4,0,0"/>
-                            </StackPanel>
-                        </Grid>
+                        <views:GameCard Deal="{x:Bind}"/>
                     </DataTemplate>
                 </GridView.ItemTemplate>
             </GridView>

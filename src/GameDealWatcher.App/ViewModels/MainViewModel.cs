@@ -55,6 +55,12 @@ public partial class MainViewModel : ObservableObject
             using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
             await _gameDealService.RefreshAllDealsAsync(cts.Token);
             LastUpdatedText = $"Last updated: {DateTime.Now:t}";
+
+            // Reload the deal lists so the refresh is visible without navigating away —
+            // views only reload themselves in their Loaded handlers.
+            await _dashboardView.ViewModel.LoadDealsAsync();
+            await _epicView.ViewModel.LoadDealsAsync();
+            await _steamView.ViewModel.LoadDealsAsync();
         }
         catch (OperationCanceledException) { }
         catch (Exception ex)

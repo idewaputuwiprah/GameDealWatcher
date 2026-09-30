@@ -21,6 +21,12 @@ public partial class App : Microsoft.UI.Xaml.Application
 {
     private IServiceProvider? _serviceProvider;
 
+    /// <summary>
+    /// Service locator for XAML-created controls (e.g. GameCard inside a DataTemplate)
+    /// that cannot receive constructor injection.
+    /// </summary>
+    public static IServiceProvider? Services { get; private set; }
+
     protected override async void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs e)
     {
         try
@@ -32,6 +38,7 @@ public partial class App : Microsoft.UI.Xaml.Application
             var services = new ServiceCollection();
             ConfigureServices(services);
             _serviceProvider = services.BuildServiceProvider();
+            Services = _serviceProvider;
 
             var connectionString = GetConnectionString();
             try
