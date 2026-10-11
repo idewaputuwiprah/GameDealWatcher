@@ -29,6 +29,11 @@ public partial class App : Microsoft.UI.Xaml.Application
 
     protected override async void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs e)
     {
+        UnhandledException += (sender, args) =>
+        {
+            WriteCrashLog(args.Exception);
+        };
+
         try
         {
             // With WindowsAppSDKSelfContained=true the Windows App Runtime is bundled,
@@ -74,20 +79,25 @@ public partial class App : Microsoft.UI.Xaml.Application
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Fatal startup error: {ex}");
-            // Write a crash log to a known location so the user can report the issue
-            try
-            {
-                var crashDir = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "GameDealWatcher", "Logs");
-                Directory.CreateDirectory(crashDir);
-                var crashFile = Path.Combine(crashDir, "crash.log");
-                File.AppendAllText(crashFile,
-                    $"{DateTimeOffset.Now:o} FATAL STARTUP ERROR{Environment.NewLine}{ex}{Environment.NewLine}{new string('=', 60)}{Environment.NewLine}");
-            }
-            catch { }
+            WriteCrashLog(ex);
             Environment.Exit(1);
         }
+    }
+
+    private static void WriteCrashLog(Exception ex)
+    {
+        try
+        {
+            var exeDir = Path.GetDirectoryName(Environment.ProcessPath);
+            var crashDir = string.IsNullOrEmpty(exeDir)
+                ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GameDealWatcher", "Logs")
+                : Path.Combine(exeDir, "Logs");
+            Directory.CreateDirectory(crashDir);
+            var crashFile = Path.Combine(crashDir, "crash.log");
+            File.AppendAllText(crashFile,
+                $"{DateTimeOffset.Now:o} CRASH{Environment.NewLine}{ex}{Environment.NewLine}{new string('=', 60)}{Environment.NewLine}");
+        }
+        catch { }
     }
 
     private async Task InitializeAsync(string connectionString)
