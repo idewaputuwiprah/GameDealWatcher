@@ -1,3 +1,4 @@
+using GameDealWatcher.App.Utilities;
 using GameDealWatcher.App.ViewModels;
 using GameDealWatcher.App.Views;
 using GameDealWatcher.Application.Services;
@@ -31,7 +32,8 @@ public partial class App : Microsoft.UI.Xaml.Application
     {
         UnhandledException += (sender, args) =>
         {
-            WriteCrashLog(args.Exception);
+            CrashLogger.WriteCrashLog("CRASH", args.Exception);
+            Environment.Exit(1);
         };
 
         try
@@ -79,26 +81,12 @@ public partial class App : Microsoft.UI.Xaml.Application
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Fatal startup error: {ex}");
-            WriteCrashLog(ex);
+            CrashLogger.WriteCrashLog("CRASH", ex);
             Environment.Exit(1);
         }
     }
 
-    private static void WriteCrashLog(Exception ex)
-    {
-        try
-        {
-            var exeDir = Path.GetDirectoryName(Environment.ProcessPath);
-            var crashDir = string.IsNullOrEmpty(exeDir)
-                ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GameDealWatcher", "Logs")
-                : Path.Combine(exeDir, "Logs");
-            Directory.CreateDirectory(crashDir);
-            var crashFile = Path.Combine(crashDir, "crash.log");
-            File.AppendAllText(crashFile,
-                $"{DateTimeOffset.Now:o} CRASH{Environment.NewLine}{ex}{Environment.NewLine}{new string('=', 60)}{Environment.NewLine}");
-        }
-        catch { }
-    }
+    
 
     private async Task InitializeAsync(string connectionString)
     {

@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using GameDealWatcher.App.Utilities;
 using GameDealWatcher.Domain.Entities;
 using GameDealWatcher.Domain.Interfaces;
 using GameDealWatcher.Infrastructure.Images;
@@ -88,11 +89,15 @@ public partial class SettingsViewModel : ObservableObject
     {
         try
         {
-            await _imageCacheService.ClearCacheAsync();
+            await _imageCacheService.ClearCacheAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Failed to clear cache: {ex}");
+            _ = Task.Run(() =>
+            {
+                CrashLogger.WriteCrashLog("CACHE CRASH", ex);
+            });
         }
     }
 }
