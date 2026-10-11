@@ -47,6 +47,10 @@
                 <Setter Property="FontSize" Value="24"/>
                 <Setter Property="FontWeight" Value="Bold"/>
             </Style>
+
+            <Style x:Key="NonSelectableGridViewItemStyle" TargetType="GridViewItem">
+                <Setter Property="IsTabStop" Value="False"/>
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

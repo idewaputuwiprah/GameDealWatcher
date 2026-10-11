@@ -114,6 +114,9 @@ public sealed partial class GameCard : UserControl
     public Visibility DateRangeVisibility(GameDeal? deal) =>
         DateRangeText(deal).Length > 0 ? Visibility.Visible : Visibility.Collapsed;
 
+    public string OpenStoreAutomationName(GameDeal? deal) =>
+        deal != null ? $"Open {deal.Title} in store" : "Open Store";
+
     private static string FormatPrice(decimal price) =>
         price <= 0 ? "Free" : price.ToString("$0.00", CultureInfo.InvariantCulture);
 }

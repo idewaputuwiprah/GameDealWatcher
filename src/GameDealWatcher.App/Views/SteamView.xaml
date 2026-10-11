@@ -20,7 +20,8 @@
         </StackPanel>
 
         <Grid Grid.Row="1">
-            <GridView ItemsSource="{x:Bind ViewModel.SteamDeals}" SelectionMode="None" IsItemClickEnabled="False" Padding="12">
+            <GridView ItemsSource="{x:Bind ViewModel.SteamDeals}" SelectionMode="None" IsItemClickEnabled="False" Padding="12"
+                      ItemContainerStyle="{StaticResource NonSelectableGridViewItemStyle}">
                 <GridView.ItemsPanel>
                     <ItemsPanelTemplate>
                         <ItemsWrapGrid Orientation="Horizontal"/>

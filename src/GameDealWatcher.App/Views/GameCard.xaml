@@ -1,10 +1,10 @@
 <UserControl x:Class="GameDealWatcher.App.Views.GameCard"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Grid Width="230" Margin="6" Background="{StaticResource SteamCardBackgroundBrush}" CornerRadius="4">
+    <Grid Width="230" Height="300" Margin="6" Background="{StaticResource SteamCardBackgroundBrush}" CornerRadius="4">
         <Grid.RowDefinitions>
             <RowDefinition Height="110"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
         <Grid Grid.Row="0">
@@ -27,22 +27,58 @@
             </Border>
         </Grid>
 
-        <StackPanel Grid.Row="1" Background="{StaticResource SteamCardFooterBackgroundBrush}" Padding="10">
-            <TextBlock Text="{x:Bind Deal.Title, Mode=OneWay}" Foreground="{StaticResource SteamHeadingTextBrush}" FontWeight="SemiBold"
-                       TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"/>
-            <TextBlock Text="{x:Bind Deal.ProviderName, Mode=OneWay}" Foreground="{StaticResource SteamMutedTextBrush}" FontSize="12" Margin="0,2,0,0"/>
-            <TextBlock Text="{x:Bind DateRangeText(Deal), Mode=OneWay}" Visibility="{x:Bind DateRangeVisibility(Deal), Mode=OneWay}"
-                       Foreground="{StaticResource SteamMutedTextBrush}" FontSize="12" Margin="0,4,0,0"/>
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
-                <TextBlock Text="{x:Bind OriginalPriceText(Deal), Mode=OneWay}"
-                           Foreground="{StaticResource SteamMutedTextBrush}" TextDecorations="Strikethrough"
-                           Visibility="{x:Bind OriginalPriceVisibility(Deal), Mode=OneWay}"/>
-                <TextBlock Text="{x:Bind CurrentPriceText(Deal), Mode=OneWay}"
-                           Foreground="{StaticResource SteamDiscountTextBrush}" FontWeight="Bold"/>
+        <Grid Grid.Row="1" Background="{StaticResource SteamCardFooterBackgroundBrush}" Padding="10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0"
+                       Text="{x:Bind Deal.Title, Mode=OneWay}"
+                       ToolTipService.ToolTip="{x:Bind Deal.Title, Mode=OneWay}"
+                       Foreground="{StaticResource SteamHeadingTextBrush}"
+                       FontWeight="SemiBold"
+                       MinHeight="38"
+                       TextWrapping="Wrap"
+                       MaxLines="2"
+                       TextTrimming="CharacterEllipsis"/>
+
+            <StackPanel Grid.Row="1" Margin="0,2,0,0">
+                <TextBlock Text="{x:Bind Deal.ProviderName, Mode=OneWay}"
+                           Foreground="{StaticResource SteamMutedTextBrush}"
+                           FontSize="12"/>
+                <TextBlock Text="{x:Bind DateRangeText(Deal), Mode=OneWay}"
+                           Visibility="{x:Bind DateRangeVisibility(Deal), Mode=OneWay}"
+                           Foreground="{StaticResource SteamMutedTextBrush}"
+                           FontSize="12"
+                           Margin="0,2,0,0"
+                           TextTrimming="CharacterEllipsis"/>
             </StackPanel>
-            <Button Content="Open Store" Click="OpenStore_Click" Style="{StaticResource SteamAccentButtonStyle}"
-                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,10,0,0"
-                    AutomationProperties.AutomationId="BtnOpenStore"/>
-        </StackPanel>
+
+            <!-- Flexible spacer row (*) ensuring price and button stay anchored at the bottom -->
+
+            <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,6,0,0">
+                <TextBlock Text="{x:Bind OriginalPriceText(Deal), Mode=OneWay}"
+                       Foreground="{StaticResource SteamMutedTextBrush}"
+                       TextDecorations="Strikethrough"
+                       Visibility="{x:Bind OriginalPriceVisibility(Deal), Mode=OneWay}"/>
+                <TextBlock Text="{x:Bind CurrentPriceText(Deal), Mode=OneWay}"
+                       Foreground="{StaticResource SteamDiscountTextBrush}"
+                       FontWeight="Bold"/>
+            </StackPanel>
+
+            <Button Grid.Row="4"
+                    Content="Open Store"
+                    Click="OpenStore_Click"
+                    Style="{StaticResource SteamAccentButtonStyle}"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Center"
+                    Margin="0,8,0,0"
+                    AutomationProperties.AutomationId="BtnOpenStore"
+                    AutomationProperties.Name="{x:Bind OpenStoreAutomationName(Deal), Mode=OneWay}"/>
+        </Grid>
     </Grid>
 </UserControl>
