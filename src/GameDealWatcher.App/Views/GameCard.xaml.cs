@@ -40,7 +40,8 @@ public sealed partial class GameCard : UserControl
     {
         try
         {
-            _imageCts?.Cancel();
+            try { _imageCts?.Cancel(); }
+            catch (ObjectDisposedException) { }
             _imageCts?.Dispose();
         }
         finally
