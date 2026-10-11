@@ -25,6 +25,7 @@ public sealed partial class GameCard : UserControl
     public GameCard()
     {
         InitializeComponent();
+        Unloaded += (s, e) => { _imageCts?.Cancel(); _imageCts?.Dispose(); };
     }
 
     private static void OnDealChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -32,10 +33,15 @@ public sealed partial class GameCard : UserControl
 
     private async void LoadCoverImageAsync()
     {
-        // Cancel any download still running for the deal this card previously showed
-        _imageCts?.Cancel();
-        _imageCts?.Dispose();
-        _imageCts = new CancellationTokenSource();
+        try
+        {
+            _imageCts?.Cancel();
+            _imageCts?.Dispose();
+        }
+        finally
+        {
+            _imageCts = new CancellationTokenSource();
+        }
         var ct = _imageCts.Token;
 
         var url = Deal?.ImageUrl;

@@ -16,12 +16,14 @@ public sealed class ImageCacheService : IImageCacheService
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly string _cacheDirectory;
+    private readonly object _clearLock = new();
 
-    public ImageCacheService(IHttpClientFactory httpClientFactory)
+    public ImageCacheService(IHttpClientFactory httpClientFactory, string? cacheDirectory = null)
     {
         _httpClientFactory = httpClientFactory;
-        _cacheDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GameDealWatcher", "Cache", "Images");
+        _cacheDirectory = cacheDirectory ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GameDealWatcher", "Cache", "Images");
         Directory.CreateDirectory(_cacheDirectory);
+        CleanOrphanedTempFiles();
     }
 
     public async Task<string?> GetOrDownloadImageAsync(string? imageUrl, CancellationToken ct)
@@ -52,12 +54,23 @@ public sealed class ImageCacheService : IImageCacheService
 
             // Download to a temp file first, then atomically rename to avoid
             // serving a corrupt partial file if the process crashes mid-download.
-            await using var fs = new FileStream(tmpPath, FileMode.Create, FileAccess.Write, FileShare.None);
-            await response.Content.CopyToAsync(fs, ct);
-            await fs.FlushAsync(ct);
-            fs.Close();
-            File.Move(tmpPath, filePath, overwrite: true);
-            return filePath;
+            await using (var fs = new FileStream(tmpPath, FileMode.Create, FileAccess.Write, FileShare.None))
+            {
+                await response.Content.CopyToAsync(fs, ct);
+                await fs.FlushAsync(ct);
+            }
+
+            try
+            {
+                File.Move(tmpPath, filePath, overwrite: true);
+                return filePath;
+            }
+            catch (IOException ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"File.Move IOException for {filePath}: {ex.Message}");
+                if (File.Exists(tmpPath)) File.Delete(tmpPath);
+                return null;
+            }
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex)
@@ -73,10 +86,56 @@ public sealed class ImageCacheService : IImageCacheService
     {
         await Task.Run(() =>
         {
-            if (Directory.Exists(_cacheDirectory))
-                Directory.Delete(_cacheDirectory, true);
-            Directory.CreateDirectory(_cacheDirectory);
+            lock (_clearLock)
+            {
+                if (!Directory.Exists(_cacheDirectory))
+                {
+                    Directory.CreateDirectory(_cacheDirectory);
+                    return;
+                }
+
+                var files = Directory.EnumerateFiles(_cacheDirectory, "*", SearchOption.AllDirectories);
+                foreach (var file in files)
+                {
+                    try
+                    {
+                        File.Delete(file);
+                    }
+                    catch (IOException ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Could not delete cached file {file}: {ex.Message}");
+                    }
+                    catch (UnauthorizedAccessException ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Access denied deleting cached file {file}: {ex.Message}");
+                    }
+                }
+            }
         });
+    }
+
+    private void CleanOrphanedTempFiles()
+    {
+        try
+        {
+            if (!Directory.Exists(_cacheDirectory)) return;
+
+            foreach (var tmpFile in Directory.EnumerateFiles(_cacheDirectory, "*.tmp"))
+            {
+                try
+                {
+                    File.Delete(tmpFile);
+                }
+                catch
+                {
+                    System.Diagnostics.Debug.WriteLine($"Skipped orphaned temp file in use: {tmpFile}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error during orphaned temp file cleanup: {ex.Message}");
+        }
     }
 
     private static string HashString(string input)
