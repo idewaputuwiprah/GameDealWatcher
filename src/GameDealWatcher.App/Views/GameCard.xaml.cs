@@ -25,7 +25,12 @@ public sealed partial class GameCard : UserControl
     public GameCard()
     {
         InitializeComponent();
-        Unloaded += (s, e) => { _imageCts?.Cancel(); _imageCts?.Dispose(); };
+        Unloaded += (s, e) =>
+        {
+            try { _imageCts?.Cancel(); }
+            catch (ObjectDisposedException) { }
+            _imageCts?.Dispose();
+        };
     }
 
     private static void OnDealChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
