@@ -1,7 +1,10 @@
+using Dapper;
 using GameDealWatcher.Domain.Entities;
 using GameDealWatcher.Domain.Interfaces;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
+
+using System.Globalization;
 
 namespace GameDealWatcher.Infrastructure.Database;
 
@@ -16,72 +19,64 @@ public sealed class SqliteGameDealRepository : IGameDealRepository
         _logger = logger;
     }
 
-    public async Task InsertDealsAsync(IReadOnlyList<GameDeal> deals, CancellationToken ct)
+    public async Task<IReadOnlyList<string>> InsertDealsAsync(IReadOnlyList<GameDeal> deals, CancellationToken ct)
     {
         await using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync(ct);
         await using var transaction = await connection.BeginTransactionAsync(ct);
-        var cmd = connection.CreateCommand();
-        cmd.Transaction = (SqliteTransaction)transaction;
-        cmd.CommandText = @"INSERT INTO GameDeals (Id, ProviderName, ProviderGameId, Title, Description, Publisher, Developer, OriginalPrice, CurrentPrice, DiscountPercentage, Currency, StoreUrl, ImageUrl, ThumbnailUrl, StartsAt, EndsAt, IsCurrentlyFree, IsUpcoming, ReviewScore, ReviewCount, ReleaseDate, Genres, LastUpdated) VALUES (@Id, @ProviderName, @ProviderGameId, @Title, @Description, @Publisher, @Developer, @OriginalPrice, @CurrentPrice, @DiscountPercentage, @Currency, @StoreUrl, @ImageUrl, @ThumbnailUrl, @StartsAt, @EndsAt, @IsCurrentlyFree, @IsUpcoming, @ReviewScore, @ReviewCount, @ReleaseDate, @Genres, @LastUpdated) ON CONFLICT(ProviderName, ProviderGameId) DO UPDATE SET Id = excluded.Id, Title = excluded.Title, Description = excluded.Description, Publisher = excluded.Publisher, Developer = excluded.Developer, OriginalPrice = excluded.OriginalPrice, CurrentPrice = excluded.CurrentPrice, DiscountPercentage = excluded.DiscountPercentage, Currency = excluded.Currency, StoreUrl = excluded.StoreUrl, ImageUrl = excluded.ImageUrl, ThumbnailUrl = excluded.ThumbnailUrl, StartsAt = excluded.StartsAt, EndsAt = excluded.EndsAt, IsCurrentlyFree = excluded.IsCurrentlyFree, IsUpcoming = excluded.IsUpcoming, ReviewScore = excluded.ReviewScore, ReviewCount = excluded.ReviewCount, ReleaseDate = excluded.ReleaseDate, Genres = excluded.Genres, LastUpdated = excluded.LastUpdated;";
-        var pId = cmd.CreateParameter(); pId.ParameterName = "@Id";
-        var pProvider = cmd.CreateParameter(); pProvider.ParameterName = "@ProviderName";
-        var pProviderGameId = cmd.CreateParameter(); pProviderGameId.ParameterName = "@ProviderGameId";
-        var pTitle = cmd.CreateParameter(); pTitle.ParameterName = "@Title";
-        var pDesc = cmd.CreateParameter(); pDesc.ParameterName = "@Description";
-        var pPublisher = cmd.CreateParameter(); pPublisher.ParameterName = "@Publisher";
-        var pDeveloper = cmd.CreateParameter(); pDeveloper.ParameterName = "@Developer";
-        var pOrig = cmd.CreateParameter(); pOrig.ParameterName = "@OriginalPrice";
-        var pCurr = cmd.CreateParameter(); pCurr.ParameterName = "@CurrentPrice";
-        var pDisc = cmd.CreateParameter(); pDisc.ParameterName = "@DiscountPercentage";
-        var pCurrency = cmd.CreateParameter(); pCurrency.ParameterName = "@Currency";
-        var pUrl = cmd.CreateParameter(); pUrl.ParameterName = "@StoreUrl";
-        var pImg = cmd.CreateParameter(); pImg.ParameterName = "@ImageUrl";
-        var pThumb = cmd.CreateParameter(); pThumb.ParameterName = "@ThumbnailUrl";
-        var pStart = cmd.CreateParameter(); pStart.ParameterName = "@StartsAt";
-        var pEnd = cmd.CreateParameter(); pEnd.ParameterName = "@EndsAt";
-        var pFree = cmd.CreateParameter(); pFree.ParameterName = "@IsCurrentlyFree";
-        var pUpcoming = cmd.CreateParameter(); pUpcoming.ParameterName = "@IsUpcoming";
-        var pReviewScore = cmd.CreateParameter(); pReviewScore.ParameterName = "@ReviewScore";
-        var pReviewCount = cmd.CreateParameter(); pReviewCount.ParameterName = "@ReviewCount";
-        var pReleaseDate = cmd.CreateParameter(); pReleaseDate.ParameterName = "@ReleaseDate";
-        var pGenres = cmd.CreateParameter(); pGenres.ParameterName = "@Genres";
-        var pUpdated = cmd.CreateParameter(); pUpdated.ParameterName = "@LastUpdated";
-        cmd.Parameters.AddRange(new[] { pId, pProvider, pProviderGameId, pTitle, pDesc, pPublisher, pDeveloper, pOrig, pCurr, pDisc, pCurrency, pUrl, pImg, pThumb, pStart, pEnd, pFree, pUpcoming, pReviewScore, pReviewCount, pReleaseDate, pGenres, pUpdated });
+
         var failedIds = new List<string>();
         foreach (var d in deals)
         {
             try
             {
-                pId.Value = d.Id;
-                pProvider.Value = d.ProviderName;
-                pProviderGameId.Value = d.ProviderGameId;
-                pTitle.Value = d.Title;
-                pDesc.Value = (object?)d.Description ?? DBNull.Value;
-                pPublisher.Value = (object?)d.Publisher ?? DBNull.Value;
-                pDeveloper.Value = (object?)d.Developer ?? DBNull.Value;
-                pOrig.Value = d.OriginalPrice;
-                pCurr.Value = d.CurrentPrice;
-                pDisc.Value = d.DiscountPercentage;
-                pCurrency.Value = d.Currency;
-                pUrl.Value = d.StoreUrl;
-                pImg.Value = (object?)d.ImageUrl ?? DBNull.Value;
-                pThumb.Value = (object?)d.ThumbnailUrl ?? DBNull.Value;
-                pStart.Value = (object?)d.StartsAt ?? DBNull.Value;
-                pEnd.Value = (object?)d.EndsAt ?? DBNull.Value;
-                pFree.Value = d.IsCurrentlyFree ? 1 : 0;
-                pUpcoming.Value = d.IsUpcoming ? 1 : 0;
-                pReviewScore.Value = (object?)d.ReviewScore ?? DBNull.Value;
-                pReviewCount.Value = (object?)d.ReviewCount ?? DBNull.Value;
-                pReleaseDate.Value = (object?)d.ReleaseDate ?? DBNull.Value;
-                pGenres.Value = (object?)(d.Genres != null ? string.Join(",", d.Genres) : null) ?? DBNull.Value;
-                pUpdated.Value = DateTimeOffset.UtcNow.ToString("o");
-                await cmd.ExecuteNonQueryAsync(ct);
+                var parameters = new
+                {
+                    Id = d.Id,
+                    ProviderName = d.ProviderName,
+                    ProviderGameId = d.ProviderGameId,
+                    Title = d.Title,
+                    Description = d.Description,
+                    Publisher = d.Publisher,
+                    Developer = d.Developer,
+                    OriginalPrice = d.OriginalPrice,
+                    CurrentPrice = d.CurrentPrice,
+                    DiscountPercentage = d.DiscountPercentage,
+                    Currency = d.Currency,
+                    StoreUrl = d.StoreUrl,
+                    ImageUrl = d.ImageUrl,
+                    ThumbnailUrl = d.ThumbnailUrl,
+                    StartsAt = d.StartsAt?.ToString("o"),
+                    EndsAt = d.EndsAt?.ToString("o"),
+                    IsCurrentlyFree = d.IsCurrentlyFree ? 1 : 0,
+                    IsUpcoming = d.IsUpcoming ? 1 : 0,
+                    ReviewScore = d.ReviewScore,
+                    ReviewCount = d.ReviewCount,
+                    ReleaseDate = d.ReleaseDate?.ToString("o"),
+                    Genres = d.Genres != null ? string.Join(",", d.Genres) : null,
+                    LastUpdated = DateTimeOffset.UtcNow.ToString("o")
+                };
+
+                await connection.ExecuteAsync(
+                    new CommandDefinition(
+                        @"INSERT INTO GameDeals (Id, ProviderName, ProviderGameId, Title, Description, Publisher, Developer, OriginalPrice, CurrentPrice, DiscountPercentage, Currency, StoreUrl, ImageUrl, ThumbnailUrl, StartsAt, EndsAt, IsCurrentlyFree, IsUpcoming, ReviewScore, ReviewCount, ReleaseDate, Genres, LastUpdated)
+                      VALUES (@Id, @ProviderName, @ProviderGameId, @Title, @Description, @Publisher, @Developer, @OriginalPrice, @CurrentPrice, @DiscountPercentage, @Currency, @StoreUrl, @ImageUrl, @ThumbnailUrl, @StartsAt, @EndsAt, @IsCurrentlyFree, @IsUpcoming, @ReviewScore, @ReviewCount, @ReleaseDate, @Genres, @LastUpdated)
+                      ON CONFLICT(ProviderName, ProviderGameId) DO UPDATE SET
+                          Id = excluded.Id, Title = excluded.Title, Description = excluded.Description,
+                          Publisher = excluded.Publisher, Developer = excluded.Developer,
+                          OriginalPrice = excluded.OriginalPrice, CurrentPrice = excluded.CurrentPrice,
+                          DiscountPercentage = excluded.DiscountPercentage, Currency = excluded.Currency,
+                          StoreUrl = excluded.StoreUrl, ImageUrl = excluded.ImageUrl, ThumbnailUrl = excluded.ThumbnailUrl,
+                          StartsAt = excluded.StartsAt, EndsAt = excluded.EndsAt, IsCurrentlyFree = excluded.IsCurrentlyFree,
+                          IsUpcoming = excluded.IsUpcoming, ReviewScore = excluded.ReviewScore, ReviewCount = excluded.ReviewCount,
+                          ReleaseDate = excluded.ReleaseDate, Genres = excluded.Genres, LastUpdated = excluded.LastUpdated;",
+                        parameters,
+                        transaction,
+                        cancellationToken: ct));
             }
             catch (OperationCanceledException) { throw; }
             catch (Exception ex)
             {
-                // Skip this deal and continue with the rest
                 failedIds.Add(d.Id);
                 _logger?.LogWarning(ex, "Failed to insert deal {DealId}", d.Id);
             }
@@ -92,91 +87,58 @@ public sealed class SqliteGameDealRepository : IGameDealRepository
                 deals.Count - failedIds.Count, failedIds.Count, string.Join(", ", failedIds));
         }
         await transaction.CommitAsync(ct);
+        return failedIds;
     }
 
     public async Task<IReadOnlyList<GameDeal>> GetAllDealsAsync(CancellationToken ct)
     {
         await using var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync(ct);
-        var cmd = connection.CreateCommand();
-        cmd.CommandText = "SELECT Id, ProviderName, ProviderGameId, Title, Description, Publisher, Developer, OriginalPrice, CurrentPrice, DiscountPercentage, Currency, StoreUrl, ImageUrl, ThumbnailUrl, StartsAt, EndsAt, IsCurrentlyFree, IsUpcoming, ReviewScore, ReviewCount, ReleaseDate, Genres, LastUpdated FROM GameDeals;";
-        var list = new List<GameDeal>();
-        await using var reader = await cmd.ExecuteReaderAsync(ct);
-        while (await reader.ReadAsync(ct))
-        {
-            list.Add(new GameDeal(
-                Id: reader.GetString(0),
-                ProviderGameId: reader.GetString(2),
-                ProviderName: reader.GetString(1),
-                Title: reader.GetString(3),
-                Description: reader.IsDBNull(4) ? null : reader.GetString(4),
-                Publisher: reader.IsDBNull(5) ? null : reader.GetString(5),
-                Developer: reader.IsDBNull(6) ? null : reader.GetString(6),
-                OriginalPrice: reader.GetDecimal(7),
-                CurrentPrice: reader.GetDecimal(8),
-                DiscountPercentage: reader.GetInt32(9),
-                Currency: reader.IsDBNull(10) ? "USD" : reader.GetString(10),
-                StoreUrl: reader.GetString(11),
-                ImageUrl: reader.IsDBNull(12) ? null : reader.GetString(12),
-                ThumbnailUrl: reader.IsDBNull(13) ? null : reader.GetString(13),
-                StartsAt: reader.IsDBNull(14) ? null : reader.GetDateTimeOffset(14),
-                EndsAt: reader.IsDBNull(15) ? null : reader.GetDateTimeOffset(15),
-                IsCurrentlyFree: reader.GetInt32(16) != 0,
-                IsUpcoming: reader.GetInt32(17) != 0,
-                ReviewScore: reader.IsDBNull(18) ? null : (int?)reader.GetInt32(18),
-                ReviewCount: reader.IsDBNull(19) ? null : (int?)reader.GetInt32(19),
-                ReleaseDate: reader.IsDBNull(20) ? null : reader.GetDateTimeOffset(20),
-                Genres: reader.IsDBNull(21) ? null : reader.GetString(21).Split(',', StringSplitOptions.RemoveEmptyEntries)));
-        }
-        return list;
+        var rows = await connection.QueryAsync<GameDealRow>(
+            new CommandDefinition(
+                "SELECT Id, ProviderName, ProviderGameId, Title, Description, Publisher, Developer, OriginalPrice, CurrentPrice, DiscountPercentage, Currency, StoreUrl, ImageUrl, ThumbnailUrl, StartsAt, EndsAt, IsCurrentlyFree, IsUpcoming, ReviewScore, ReviewCount, ReleaseDate, Genres, LastUpdated FROM GameDeals;",
+                cancellationToken: ct));
+        return rows.Select(MapRowToDeal).ToList();
     }
 
     public async Task<bool> NeedsRefreshAsync(TimeSpan refreshInterval, CancellationToken ct)
     {
         await using var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync(ct);
-        var cmd = connection.CreateCommand();
-        cmd.CommandText = "SELECT Value FROM Settings WHERE Key = 'LastSuccessfulRefresh';";
-        var result = await cmd.ExecuteScalarAsync(ct);
-        if (result == null || result == DBNull.Value) return true;
-        if (!DateTimeOffset.TryParse(result.ToString(), out var lastRefresh)) return true;
+        var result = await connection.QuerySingleOrDefaultAsync<string?>(
+            new CommandDefinition(
+                "SELECT Value FROM Settings WHERE Key = 'LastSuccessfulRefresh';",
+                cancellationToken: ct));
+        if (result == null) return true;
+        if (!DateTimeOffset.TryParse(result, out var lastRefresh)) return true;
         return DateTimeOffset.UtcNow - lastRefresh > refreshInterval;
     }
 
     public async Task RecordRefreshAsync(string providerName, bool success, int itemCount, string? errorMessage, CancellationToken ct)
     {
         await using var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync(ct);
-        var cmd = connection.CreateCommand();
-        cmd.CommandText = @"INSERT INTO RefreshHistory (Id, ProviderName, RefreshedAt, Success, ItemCount, ErrorMessage) VALUES (@Id, @ProviderName, @RefreshedAt, @Success, @ItemCount, @ErrorMessage);";
-        var pId = cmd.CreateParameter(); pId.ParameterName = "@Id";
-        var pProvider = cmd.CreateParameter(); pProvider.ParameterName = "@ProviderName";
-        var pRefreshedAt = cmd.CreateParameter(); pRefreshedAt.ParameterName = "@RefreshedAt";
-        var pSuccess = cmd.CreateParameter(); pSuccess.ParameterName = "@Success";
-        var pItemCount = cmd.CreateParameter(); pItemCount.ParameterName = "@ItemCount";
-        var pErrorMessage = cmd.CreateParameter(); pErrorMessage.ParameterName = "@ErrorMessage";
-        cmd.Parameters.AddRange(new[] { pId, pProvider, pRefreshedAt, pSuccess, pItemCount, pErrorMessage });
-        pId.Value = Guid.NewGuid().ToString();
-        pProvider.Value = providerName;
-        pRefreshedAt.Value = DateTimeOffset.UtcNow.ToString("o");
-        pSuccess.Value = success ? 1 : 0;
-        pItemCount.Value = itemCount;
-        pErrorMessage.Value = (object?)errorMessage ?? DBNull.Value;
-        await cmd.ExecuteNonQueryAsync(ct);
+        await connection.ExecuteAsync(
+            new CommandDefinition(
+                @"INSERT INTO RefreshHistory (Id, ProviderName, RefreshedAt, Success, ItemCount, ErrorMessage) VALUES (@Id, @ProviderName, @RefreshedAt, @Success, @ItemCount, @ErrorMessage);",
+                new
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    ProviderName = providerName,
+                    RefreshedAt = DateTimeOffset.UtcNow.ToString("o"),
+                    Success = success ? 1 : 0,
+                    ItemCount = itemCount,
+                    ErrorMessage = errorMessage
+                },
+                cancellationToken: ct));
     }
 
     public async Task SaveLastRefreshAsync(TimeSpan refreshInterval, CancellationToken ct)
     {
         await using var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync(ct);
-        var cmd = connection.CreateCommand();
-        cmd.CommandText = @"INSERT INTO Settings (Key, Value) VALUES ('LastSuccessfulRefresh', @Value)
-            ON CONFLICT(Key) DO UPDATE SET Value = excluded.Value;";
-        var pValue = cmd.CreateParameter();
-        pValue.ParameterName = "@Value";
-        pValue.Value = DateTimeOffset.UtcNow.ToString("o");
-        cmd.Parameters.Add(pValue);
-        await cmd.ExecuteNonQueryAsync(ct);
+        await connection.ExecuteAsync(
+            new CommandDefinition(
+                @"INSERT INTO Settings (Key, Value) VALUES ('LastSuccessfulRefresh', @Value)
+            ON CONFLICT(Key) DO UPDATE SET Value = excluded.Value;",
+                new { Value = DateTimeOffset.UtcNow.ToString("o") },
+                cancellationToken: ct));
     }
 
     public async Task RecordPriceChangesAsync(IReadOnlyList<GameDeal> deals, CancellationToken ct)
@@ -184,43 +146,35 @@ public sealed class SqliteGameDealRepository : IGameDealRepository
         await using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync(ct);
         await using var transaction = await connection.BeginTransactionAsync(ct);
-        var cmd = connection.CreateCommand();
-        cmd.Transaction = (SqliteTransaction)transaction;
-        cmd.CommandText = @"INSERT INTO DealHistory (Id, DealId, OriginalPrice, CurrentPrice, DiscountPercentage, Currency, RecordedAt) VALUES (@Id, @DealId, @OriginalPrice, @CurrentPrice, @DiscountPercentage, @Currency, @RecordedAt);";
-        var pId = cmd.CreateParameter(); pId.ParameterName = "@Id";
-        var pDealId = cmd.CreateParameter(); pDealId.ParameterName = "@DealId";
-        var pOrig = cmd.CreateParameter(); pOrig.ParameterName = "@OriginalPrice";
-        var pCurr = cmd.CreateParameter(); pCurr.ParameterName = "@CurrentPrice";
-        var pDisc = cmd.CreateParameter(); pDisc.ParameterName = "@DiscountPercentage";
-        var pCurrency = cmd.CreateParameter(); pCurrency.ParameterName = "@Currency";
-        var pRecordedAt = cmd.CreateParameter(); pRecordedAt.ParameterName = "@RecordedAt";
-        cmd.Parameters.AddRange(new[] { pId, pDealId, pOrig, pCurr, pDisc, pCurrency, pRecordedAt });
-        foreach (var d in deals)
+        var recordedAt = DateTimeOffset.UtcNow.ToString("o");
+        var parameters = deals.Select(d => new
         {
-            pId.Value = Guid.NewGuid().ToString();
-            pDealId.Value = d.Id;
-            pOrig.Value = d.OriginalPrice;
-            pCurr.Value = d.CurrentPrice;
-            pDisc.Value = d.DiscountPercentage;
-            pCurrency.Value = d.Currency;
-            pRecordedAt.Value = DateTimeOffset.UtcNow.ToString("o");
-            await cmd.ExecuteNonQueryAsync(ct);
-        }
+            Id = Guid.NewGuid().ToString(),
+            DealId = d.Id,
+            OriginalPrice = d.OriginalPrice,
+            CurrentPrice = d.CurrentPrice,
+            DiscountPercentage = d.DiscountPercentage,
+            Currency = d.Currency,
+            RecordedAt = recordedAt
+        });
+        await connection.ExecuteAsync(
+            new CommandDefinition(
+                @"INSERT INTO DealHistory (Id, DealId, OriginalPrice, CurrentPrice, DiscountPercentage, Currency, RecordedAt) VALUES (@Id, @DealId, @OriginalPrice, @CurrentPrice, @DiscountPercentage, @Currency, @RecordedAt);",
+                parameters,
+                transaction,
+                cancellationToken: ct));
         await transaction.CommitAsync(ct);
     }
 
     public async Task DeleteStaleDealsAsync(TimeSpan maxAge, CancellationToken ct)
     {
         await using var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync(ct);
-        var cmd = connection.CreateCommand();
-        var cutoff = DateTimeOffset.UtcNow - maxAge;
-        cmd.CommandText = "DELETE FROM GameDeals WHERE LastUpdated < @Cutoff;";
-        var pCutoff = cmd.CreateParameter();
-        pCutoff.ParameterName = "@Cutoff";
-        pCutoff.Value = cutoff.ToString("o");
-        cmd.Parameters.Add(pCutoff);
-        await cmd.ExecuteNonQueryAsync(ct);
+        var cutoff = (DateTimeOffset.UtcNow - maxAge).ToString("o");
+        await connection.ExecuteAsync(
+            new CommandDefinition(
+                "DELETE FROM GameDeals WHERE LastUpdated < @Cutoff;",
+                new { Cutoff = cutoff },
+                cancellationToken: ct));
     }
 
     public async Task DeleteDealsNotSeenAsync(string providerName, IReadOnlyList<string> seenDealIds, CancellationToken ct)
@@ -228,54 +182,104 @@ public sealed class SqliteGameDealRepository : IGameDealRepository
         await using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync(ct);
         await using var transaction = await connection.BeginTransactionAsync(ct);
-        var cmd = connection.CreateCommand();
-        cmd.Transaction = (SqliteTransaction)transaction;
 
         if (seenDealIds.Count == 0)
         {
-            cmd.CommandText = "DELETE FROM GameDeals WHERE ProviderName = @ProviderName;";
-            var pProvider = cmd.CreateParameter();
-            pProvider.ParameterName = "@ProviderName";
-            pProvider.Value = providerName;
-            cmd.Parameters.Add(pProvider);
-            await cmd.ExecuteNonQueryAsync(ct);
+            await connection.ExecuteAsync(
+                new CommandDefinition(
+                    "DELETE FROM GameDeals WHERE ProviderName = @ProviderName;",
+                    new { ProviderName = providerName },
+                    transaction,
+                    cancellationToken: ct));
         }
         else
         {
-            // Use a temp table to avoid SQLite's parameter limit (999)
-            cmd.CommandText = "CREATE TEMP TABLE _SeenIds (Id TEXT NOT NULL);";
-            await cmd.ExecuteNonQueryAsync(ct);
+            await connection.ExecuteAsync(
+                new CommandDefinition(
+                    "CREATE TEMP TABLE _SeenIds (Id TEXT NOT NULL);",
+                    transaction: transaction,
+                    cancellationToken: ct));
 
-            // Batch insert seen IDs in chunks of 500
-            foreach (var chunk in seenDealIds.Chunk(500))
+            const int batchSize = 200;
+            for (int i = 0; i < seenDealIds.Count; i += batchSize)
             {
-                var sb = new System.Text.StringBuilder("INSERT INTO _SeenIds (Id) VALUES ");
-                for (var i = 0; i < chunk.Length; i++)
-                {
-                    if (i > 0) sb.Append(", ");
-                    sb.Append($"(@Id{i})");
-                    var p = cmd.CreateParameter();
-                    p.ParameterName = $"@Id{i}";
-                    p.Value = chunk[i];
-                    cmd.Parameters.Add(p);
-                }
-                sb.Append(';');
-                cmd.CommandText = sb.ToString();
-                await cmd.ExecuteNonQueryAsync(ct);
-                cmd.Parameters.Clear();
+                var batch = seenDealIds.Skip(i).Take(batchSize).Select(id => new { Id = id }).ToList();
+                await connection.ExecuteAsync(
+                    new CommandDefinition(
+                        "INSERT INTO _SeenIds (Id) VALUES (@Id);",
+                        batch,
+                        transaction,
+                        cancellationToken: ct));
             }
 
-            cmd.CommandText = "DELETE FROM GameDeals WHERE ProviderName = @ProviderName AND Id NOT IN (SELECT Id FROM _SeenIds);";
-            var pProviderScoped = cmd.CreateParameter();
-            pProviderScoped.ParameterName = "@ProviderName";
-            pProviderScoped.Value = providerName;
-            cmd.Parameters.Add(pProviderScoped);
-            await cmd.ExecuteNonQueryAsync(ct);
+            await connection.ExecuteAsync(
+                new CommandDefinition(
+                    "DELETE FROM GameDeals WHERE ProviderName = @ProviderName AND Id NOT IN (SELECT Id FROM _SeenIds);",
+                    new { ProviderName = providerName },
+                    transaction,
+                    cancellationToken: ct));
 
-            cmd.CommandText = "DROP TABLE _SeenIds;";
-            await cmd.ExecuteNonQueryAsync(ct);
+            await connection.ExecuteAsync(
+                new CommandDefinition(
+                    "DROP TABLE _SeenIds;",
+                    transaction: transaction,
+                    cancellationToken: ct));
         }
 
         await transaction.CommitAsync(ct);
+    }
+
+    private static GameDeal MapRowToDeal(GameDealRow r) => new(
+        Id: r.Id,
+        ProviderGameId: r.ProviderGameId,
+        ProviderName: r.ProviderName,
+        Title: r.Title,
+        Description: r.Description,
+        Publisher: r.Publisher,
+        Developer: r.Developer,
+        OriginalPrice: decimal.Round((decimal)r.OriginalPrice, 2), MidpointRounding.AwayFromZero),
+        CurrentPrice: decimal.Round((decimal)r.CurrentPrice, 2), MidpointRounding.AwayFromZero),
+        DiscountPercentage: (int)r.DiscountPercentage,
+        Currency: r.Currency ?? "USD",
+        StoreUrl: r.StoreUrl,
+        ImageUrl: r.ImageUrl,
+        ThumbnailUrl: r.ThumbnailUrl,
+        StartsAt: TryParseDate(r.StartsAt),
+        EndsAt: TryParseDate(r.EndsAt),
+        IsCurrentlyFree: r.IsCurrentlyFree != 0,
+        IsUpcoming: r.IsUpcoming != 0,
+        ReviewScore: r.ReviewScore != null ? (int?)r.ReviewScore : null,
+        ReviewCount: r.ReviewCount != null ? (int?)r.ReviewCount : null,
+        ReleaseDate: TryParseDate(r.ReleaseDate),
+        Genres: r.Genres?.Split(',', StringSplitOptions.RemoveEmptyEntries));
+
+    private static DateTimeOffset? TryParseDate(string? value) =>
+        value != null && DateTimeOffset.TryParse(value, out var dto) ? dto : null;
+
+    private sealed class GameDealRow
+    {
+        public string Id { get; set; } = "";
+        public string ProviderName { get; set; } = "";
+        public string ProviderGameId { get; set; } = "";
+        public string Title { get; set; } = "";
+        public string? Description { get; set; }
+        public string? Publisher { get; set; }
+        public string? Developer { get; set; }
+        public double OriginalPrice { get; set; }
+        public double CurrentPrice { get; set; }
+        public long DiscountPercentage { get; set; }
+        public string? Currency { get; set; }
+        public string StoreUrl { get; set; } = "";
+        public string? ImageUrl { get; set; }
+        public string? ThumbnailUrl { get; set; }
+        public string? StartsAt { get; set; }
+        public string? EndsAt { get; set; }
+        public long IsCurrentlyFree { get; set; }
+        public long IsUpcoming { get; set; }
+        public long? ReviewScore { get; set; }
+        public long? ReviewCount { get; set; }
+        public string? ReleaseDate { get; set; }
+        public string? Genres { get; set; }
+        public string? LastUpdated { get; set; }
     }
 }
