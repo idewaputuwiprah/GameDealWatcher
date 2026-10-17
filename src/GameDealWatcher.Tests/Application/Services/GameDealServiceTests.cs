@@ -29,6 +29,8 @@ public class GameDealServiceTests
             .ReturnsAsync(new AppSettings());
         repoMock.Setup(r => r.GetAllDealsAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<GameDeal>());
+        repoMock.Setup(r => r.InsertDealsAsync(It.IsAny<IReadOnlyList<GameDeal>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IReadOnlyList<string>)Array.Empty<string>());
         return new GameDealService(
             repoMock.Object,
             providers,
@@ -118,6 +120,8 @@ public class GameDealServiceTests
         var repoMock = new Mock<IGameDealRepository>();
         repoMock.Setup(r => r.GetAllDealsAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<GameDeal>());
+        repoMock.Setup(r => r.InsertDealsAsync(It.IsAny<IReadOnlyList<GameDeal>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IReadOnlyList<string>)Array.Empty<string>());
         var settingsMock = new Mock<ISettingsRepository>();
         settingsMock.Setup(s => s.GetSettingsAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new AppSettings { MinimumSteamDiscount = 50 });
@@ -146,6 +150,8 @@ public class GameDealServiceTests
         var repoMock = new Mock<IGameDealRepository>();
         repoMock.Setup(r => r.GetAllDealsAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<GameDeal>());
+        repoMock.Setup(r => r.InsertDealsAsync(It.IsAny<IReadOnlyList<GameDeal>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IReadOnlyList<string>)Array.Empty<string>());
         var settingsMock = new Mock<ISettingsRepository>();
         settingsMock.Setup(s => s.GetSettingsAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new AppSettings());

@@ -4,7 +4,7 @@ namespace GameDealWatcher.Domain.Interfaces;
 
 public interface IGameDealRepository
 {
-    Task InsertDealsAsync(IReadOnlyList<GameDeal> deals, CancellationToken ct);
+    Task<IReadOnlyList<string>> InsertDealsAsync(IReadOnlyList<GameDeal> deals, CancellationToken ct);
     Task<IReadOnlyList<GameDeal>> GetAllDealsAsync(CancellationToken ct);
     Task<bool> NeedsRefreshAsync(TimeSpan refreshInterval, CancellationToken ct);
     Task RecordRefreshAsync(string providerName, bool success, int itemCount, string? errorMessage, CancellationToken ct);

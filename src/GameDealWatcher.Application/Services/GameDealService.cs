@@ -129,7 +129,9 @@ public sealed class GameDealService : IGameDealService
         try
         {
             var deals = (await provider.GetDealsAsync(ct)).ToList();
-            await _repository.InsertDealsAsync(deals, ct);
+            var failedIds = await _repository.InsertDealsAsync(deals, ct);
+            if (failedIds.Any())
+                _logger.LogWarning("{Provider} insert failures: {Count}/{Total}", provider.ProviderName, failedIds.Count, deals.Count);
             await _repository.RecordRefreshAsync(provider.ProviderName, true, deals.Count, null, ct);
             _logger.LogInformation("{Provider} refresh complete: {Count} deals", provider.ProviderName, deals.Count);
             return new ProviderRefreshResult(provider.ProviderName, true, deals);

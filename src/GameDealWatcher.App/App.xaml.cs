@@ -113,10 +113,10 @@ public partial class App : Microsoft.UI.Xaml.Application
         services.AddHttpClients();
 
         // TODO: Swap back to real providers when ready for live API calls
-        // services.AddSingleton<IGameDealProvider, SteamProvider>();
-        // services.AddSingleton<IGameDealProvider, EpicGamesProvider>();
-        services.AddSingleton<IGameDealProvider, DummySteamProvider>();
-        services.AddSingleton<IGameDealProvider, DummyEpicProvider>();
+        services.AddSingleton<IGameDealProvider, SteamProvider>();
+        services.AddSingleton<IGameDealProvider, EpicGamesProvider>();
+        // services.AddSingleton<IGameDealProvider, DummySteamProvider>();
+        // services.AddSingleton<IGameDealProvider, DummyEpicProvider>();
 
         services.AddSingleton<IImageCacheService, ImageCacheService>();
         services.AddSingleton<INotificationService>(_ => new WindowsNotificationService(_.GetRequiredService<ILogger<WindowsNotificationService>>()));
