@@ -1,4 +1,5 @@
 using System.Text.Json;
+using GameDealWatcher.Domain.Entities;
 using GameDealWatcher.Infrastructure.Providers;
 using Xunit;
 
@@ -46,7 +47,7 @@ public class EpicGamesProviderTests
         var doc = JsonDocument.Parse(json);
         var entry = doc.RootElement;
 
-        var deal = EpicGamesProvider.ParseEpicElement(entry, Now);
+        var deal = EpicGamesProvider.ParseEpicElement(entry, Now, RegionCatalog.Default);
 
         Assert.NotNull(deal);
         Assert.Equal("epic_abc123", deal!.Id);
@@ -78,7 +79,7 @@ public class EpicGamesProviderTests
         var doc = JsonDocument.Parse(json);
         var entry = doc.RootElement;
 
-        var deal = EpicGamesProvider.ParseEpicElement(entry, Now);
+        var deal = EpicGamesProvider.ParseEpicElement(entry, Now, RegionCatalog.Default);
 
         Assert.Null(deal);
     }
@@ -112,7 +113,7 @@ public class EpicGamesProviderTests
         var doc = JsonDocument.Parse(json);
         var entry = doc.RootElement;
 
-        var deal = EpicGamesProvider.ParseEpicElement(entry, Now);
+        var deal = EpicGamesProvider.ParseEpicElement(entry, Now, RegionCatalog.Default);
 
         Assert.NotNull(deal);
         Assert.False(deal!.IsCurrentlyFree);
@@ -160,7 +161,7 @@ public class EpicGamesProviderTests
         var doc = JsonDocument.Parse(json);
         var entry = doc.RootElement;
 
-        var deal = EpicGamesProvider.ParseEpicElement(entry, Now);
+        var deal = EpicGamesProvider.ParseEpicElement(entry, Now, RegionCatalog.Default);
 
         Assert.NotNull(deal);
         Assert.True(deal!.IsCurrentlyFree);
@@ -189,7 +190,7 @@ public class EpicGamesProviderTests
         var doc = JsonDocument.Parse(json);
         var entry = doc.RootElement;
 
-        var deal = EpicGamesProvider.ParseEpicElement(entry, Now);
+        var deal = EpicGamesProvider.ParseEpicElement(entry, Now, RegionCatalog.Default);
 
         Assert.NotNull(deal);
         Assert.Equal("https://www.epicgames.com/store/en-US/p/fallback-slug", deal!.StoreUrl);
@@ -209,7 +210,7 @@ public class EpicGamesProviderTests
         var doc = JsonDocument.Parse(json);
         var entry = doc.RootElement;
 
-        var deal = EpicGamesProvider.ParseEpicElement(entry, Now);
+        var deal = EpicGamesProvider.ParseEpicElement(entry, Now, RegionCatalog.Default);
 
         Assert.NotNull(deal);
         Assert.Equal("https://www.epicgames.com/store/en-US/p/nourl1", deal!.StoreUrl);
@@ -229,7 +230,7 @@ public class EpicGamesProviderTests
         var doc = JsonDocument.Parse(json);
         var entry = doc.RootElement;
 
-        var deal = EpicGamesProvider.ParseEpicElement(entry, Now);
+        var deal = EpicGamesProvider.ParseEpicElement(entry, Now, RegionCatalog.Default);
 
         Assert.NotNull(deal);
         Assert.True(deal!.IsCurrentlyFree);

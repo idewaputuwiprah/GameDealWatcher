@@ -16,7 +16,7 @@ public class SteamProviderTests
         var doc = JsonDocument.Parse(json);
         var item = doc.RootElement;
 
-        var deal = SteamProvider.ParseSteamDeal(item);
+        var deal = SteamProvider.ParseSteamDeal(item, "USD");
 
         Assert.NotNull(deal);
         Assert.Equal("steam_730", deal.Id);
@@ -37,7 +37,7 @@ public class SteamProviderTests
         var doc = JsonDocument.Parse(json);
         var item = doc.RootElement;
 
-        var deal = SteamProvider.ParseSteamDeal(item);
+        var deal = SteamProvider.ParseSteamDeal(item, "USD");
 
         Assert.Null(deal);
     }
@@ -51,7 +51,7 @@ public class SteamProviderTests
         var doc = JsonDocument.Parse(json);
         var item = doc.RootElement;
 
-        var deal = SteamProvider.ParseSteamDeal(item);
+        var deal = SteamProvider.ParseSteamDeal(item, "USD");
 
         Assert.NotNull(deal);
         Assert.Equal(0m, deal.CurrentPrice);
@@ -67,7 +67,7 @@ public class SteamProviderTests
         var doc = JsonDocument.Parse(json);
         var item = doc.RootElement;
 
-        var deal = SteamProvider.ParseSteamDeal(item);
+        var deal = SteamProvider.ParseSteamDeal(item, "USD");
 
         Assert.NotNull(deal);
         Assert.Equal(15.00m, deal!.CurrentPrice);
@@ -85,7 +85,7 @@ public class SteamProviderTests
         var doc = JsonDocument.Parse(json);
         var item = doc.RootElement;
 
-        var deal = SteamProvider.ParseSteamDeal(item);
+        var deal = SteamProvider.ParseSteamDeal(item, "USD");
 
         Assert.NotNull(deal);
         Assert.Equal("capsule.jpg", deal!.ImageUrl);

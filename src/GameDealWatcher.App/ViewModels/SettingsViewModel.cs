@@ -31,6 +31,11 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private int minimumSteamDiscount = 0;
 
+    [ObservableProperty]
+    private string selectedRegionCode = "US";
+
+    public IReadOnlyList<SupportedRegion> AvailableRegions => RegionCatalog.All;
+
     public SettingsViewModel(IImageCacheService imageCacheService, ISettingsRepository settingsRepository, IStartupService startupService)
     {
         _imageCacheService = imageCacheService;
@@ -54,6 +59,7 @@ public partial class SettingsViewModel : ObservableObject
             EpicNotifications = settings.EpicNotifications;
             SteamNotifications = settings.SteamNotifications;
             MinimumSteamDiscount = settings.MinimumSteamDiscount;
+            SelectedRegionCode = settings.SelectedRegionCode ?? "US";
         }
         catch (Exception ex)
         {
@@ -73,7 +79,8 @@ public partial class SettingsViewModel : ObservableObject
                 StartWithWindows = StartWithWindows,
                 EpicNotifications = EpicNotifications,
                 SteamNotifications = SteamNotifications,
-                MinimumSteamDiscount = MinimumSteamDiscount
+                MinimumSteamDiscount = MinimumSteamDiscount,
+                SelectedRegionCode = SelectedRegionCode
             }, CancellationToken.None);
 
             _startupService.SetStartWithWindows(StartWithWindows);

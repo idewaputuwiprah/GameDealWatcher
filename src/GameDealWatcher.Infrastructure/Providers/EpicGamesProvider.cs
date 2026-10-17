@@ -9,18 +9,24 @@ namespace GameDealWatcher.Infrastructure.Providers;
 public sealed class EpicGamesProvider : IGameDealProvider
 {
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ISettingsRepository _settingsRepository;
 
     public string ProviderName => ProviderNames.Epic;
 
-    public EpicGamesProvider(IHttpClientFactory httpClientFactory)
+    public EpicGamesProvider(IHttpClientFactory httpClientFactory, ISettingsRepository settingsRepository)
     {
         _httpClientFactory = httpClientFactory;
+        _settingsRepository = settingsRepository;
     }
 
     public async Task<IReadOnlyList<GameDeal>> GetDealsAsync(CancellationToken ct)
     {
+        var settings = await _settingsRepository.GetSettingsAsync(ct);
+        var region = RegionCatalog.ByCode(settings.SelectedRegionCode) ?? RegionCatalog.Default;
+
         var client = _httpClientFactory.CreateClient(HttpClientConfiguration.EpicHandlerName);
-        var response = await client.GetAsync("freeGamesPromotions?locale=en-US&country=US&allowCountries=US", ct);
+        var url = $"freeGamesPromotions?locale={region.EpicLocale}&country={region.Code}&allowCountries={region.Code}";
+        var response = await client.GetAsync(url, ct);
         response.EnsureSuccessStatusCode();
         var json = await response.Content.ReadAsStringAsync(ct);
         var doc = JsonDocument.Parse(json);
@@ -37,13 +43,13 @@ public sealed class EpicGamesProvider : IGameDealProvider
 
         foreach (var entry in elements.EnumerateArray())
         {
-            var deal = ParseEpicElement(entry, now);
+            var deal = ParseEpicElement(entry, now, region);
             if (deal != null) deals.Add(deal);
         }
         return deals;
     }
 
-    public static GameDeal? ParseEpicElement(JsonElement entry, DateTimeOffset now)
+    public static GameDeal? ParseEpicElement(JsonElement entry, DateTimeOffset now, SupportedRegion region)
     {
         try
         {
@@ -74,21 +80,24 @@ public sealed class EpicGamesProvider : IGameDealProvider
                 thumbUrl = GetImageUrl(images, "Thumbnail");
             }
 
-            // Store URL — multi-level fallback
-            var storeUrl = BuildStoreUrl(entry, offerId);
+            // Store URL — multi-level fallback with locale-aware URLs
+            var storeUrl = BuildStoreUrl(entry, offerId, region.EpicLocale);
 
-            // Price data — Epic stores prices in cents
+            // Price data — Epic stores prices in cents, currency from selected region
             var originalPrice = 0m;
             var currentPrice = 0m;
             var discountPct = 0;
+            var currency = region.CurrencyCode;
             if (entry.TryGetProperty("price", out var price) && price.ValueKind == JsonValueKind.Object)
             {
+                // Read actual currency from API response if available
+                if (price.TryGetProperty("currencyCode", out var curProp) && curProp.ValueKind == JsonValueKind.String)
+                    currency = curProp.GetString() ?? region.CurrencyCode;
+
                 if (price.TryGetProperty("totalPrice", out var total) && total.ValueKind == JsonValueKind.Object)
                 {
-                    // Convert cents to dollars
                     originalPrice = total.TryGetProperty("originalPrice", out var op) ? op.GetDecimal() / 100m : 0m;
                     currentPrice = total.TryGetProperty("discountPrice", out var dp) ? dp.GetDecimal() / 100m : 0m;
-                    // Compute discount percentage from dollar values
                     if (originalPrice > 0)
                         discountPct = (int)Math.Round((1 - currentPrice / originalPrice) * 100);
                 }
@@ -165,7 +174,7 @@ public sealed class EpicGamesProvider : IGameDealProvider
                 OriginalPrice: originalPrice,
                 CurrentPrice: currentPrice,
                 DiscountPercentage: discountPct,
-                Currency: "USD",
+                Currency: currency,
                 StoreUrl: storeUrl,
                 ImageUrl: imgUrl,
                 ThumbnailUrl: thumbUrl,
@@ -196,13 +205,13 @@ public sealed class EpicGamesProvider : IGameDealProvider
                 ? endDate : null;
     }
 
-    private static string BuildStoreUrl(JsonElement entry, string offerId)
+    private static string BuildStoreUrl(JsonElement entry, string offerId, string locale)
     {
         if (entry.TryGetProperty("productSlug", out var slug) && slug.ValueKind == JsonValueKind.String)
         {
             var slugStr = slug.GetString();
             if (!string.IsNullOrEmpty(slugStr))
-                return $"https://www.epicgames.com/store/en-US/p/{slugStr}";
+                return $"https://www.epicgames.com/store/{locale}/p/{slugStr}";
         }
 
         if (entry.TryGetProperty("catalogNs", out var catalogNs) && catalogNs.ValueKind == JsonValueKind.Object)
@@ -214,7 +223,7 @@ public sealed class EpicGamesProvider : IGameDealProvider
                 {
                     var slugStr = pageSlug.GetString();
                     if (!string.IsNullOrEmpty(slugStr))
-                        return $"https://www.epicgames.com/store/en-US/p/{slugStr}";
+                        return $"https://www.epicgames.com/store/{locale}/p/{slugStr}";
                 }
             }
         }
@@ -225,7 +234,7 @@ public sealed class EpicGamesProvider : IGameDealProvider
             if (!string.IsNullOrEmpty(urlStr)) return urlStr;
         }
 
-        return $"https://www.epicgames.com/store/en-US/p/{offerId}";
+        return $"https://www.epicgames.com/store/{locale}/p/{offerId}";
     }
 
     private static string? GetImageUrl(JsonElement images, string type)

@@ -8,23 +8,34 @@ namespace GameDealWatcher.Infrastructure.Providers;
 public sealed class SteamProvider : IGameDealProvider
 {
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ISettingsRepository _settingsRepository;
 
     public string ProviderName => ProviderNames.Steam;
 
-    public SteamProvider(IHttpClientFactory httpClientFactory)
+    public SteamProvider(IHttpClientFactory httpClientFactory, ISettingsRepository settingsRepository)
     {
         _httpClientFactory = httpClientFactory;
+        _settingsRepository = settingsRepository;
     }
 
     public async Task<IReadOnlyList<GameDeal>> GetDealsAsync(CancellationToken ct)
     {
+        var settings = await _settingsRepository.GetSettingsAsync(ct);
+        var region = RegionCatalog.ByCode(settings.SelectedRegionCode) ?? RegionCatalog.Default;
+
         var client = _httpClientFactory.CreateClient(HttpClientConfiguration.SteamHandlerName);
-        var response = await client.GetAsync("api/featuredcategories/?cc=us&l=english", ct);
+        var url = $"api/featuredcategories/?cc={region.Code}&l={region.SteamLocale}";
+        var response = await client.GetAsync(url, ct);
         response.EnsureSuccessStatusCode();
         var json = await response.Content.ReadAsStringAsync(ct);
         var doc = JsonDocument.Parse(json);
         var deals = new List<GameDeal>();
         var root = doc.RootElement;
+
+        // Read currency from API response (Steam returns it at root level)
+        var currency = root.TryGetProperty("currency", out var curProp) && curProp.ValueKind == JsonValueKind.String
+            ? curProp.GetString() ?? region.CurrencyCode
+            : region.CurrencyCode;
 
         // Steam API structure: root.specials.items[]
         if (!root.TryGetProperty("specials", out var specials) || specials.ValueKind != JsonValueKind.Object)
@@ -34,13 +45,13 @@ public sealed class SteamProvider : IGameDealProvider
 
         foreach (var item in items.EnumerateArray())
         {
-            var deal = ParseSteamDeal(item);
+            var deal = ParseSteamDeal(item, currency);
             if (deal != null) deals.Add(deal);
         }
         return deals;
     }
 
-    public static GameDeal? ParseSteamDeal(JsonElement item)
+    public static GameDeal? ParseSteamDeal(JsonElement item, string currency)
     {
         try
         {
@@ -80,7 +91,7 @@ public sealed class SteamProvider : IGameDealProvider
                 OriginalPrice: originalPrice,
                 CurrentPrice: finalPrice,
                 DiscountPercentage: discountPct,
-                Currency: "USD",
+                Currency: currency,
                 StoreUrl: storeUrl,
                 ImageUrl: imgUrl,
                 ThumbnailUrl: imgUrl,

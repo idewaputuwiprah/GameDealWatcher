@@ -5,6 +5,7 @@ A Windows desktop application that monitors game deals from Steam and Epic Games
 ## Features
 
 - **Multi-store tracking** — Aggregates deals from Steam and Epic Games in one place
+- **Region & currency selection** — View prices in your local currency (15 regions supported: US, UK, EU countries, Brazil, Mexico, Japan, Korea, Australia, Canada, Russia, China, India)
 - **Automatic refresh** — Configurable background polling (minimum every 5 minutes)
 - **Smart notifications** — Windows toast alerts for new deals based on your preferences
 - **Price history** — Tracks price changes over time so you know if it's a real deal

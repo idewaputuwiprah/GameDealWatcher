@@ -16,6 +16,7 @@ public sealed record AppSettings
     public bool StartWithWindows { get; init; } = false;
     public bool EpicNotifications { get; init; } = true;
     public bool SteamNotifications { get; init; } = true;
+    public string SelectedRegionCode { get; init; } = "US";
     public int MinimumSteamDiscount
     {
         get => _minimumSteamDiscount;
