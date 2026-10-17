@@ -20,6 +20,9 @@ public partial class EpicViewModel : ObservableObject
     [ObservableProperty]
     private bool isLoading;
 
+    [ObservableProperty]
+    private bool isEmpty;
+
     public ObservableCollection<string> FilterOptions { get; } = new() { "All", "Free Now", "Upcoming" };
 
     public EpicViewModel(IGameDealService gameDealService)
@@ -61,11 +64,14 @@ public partial class EpicViewModel : ObservableObject
             {
                 EpicDeals.Add(d);
             }
+            IsEmpty = EpicDeals.Count == 0;
         }
         catch (OperationCanceledException) { }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"LoadDealsAsync failed: {ex}");
+            EpicDeals.Clear();
+            IsEmpty = true;
         }
         finally
         {

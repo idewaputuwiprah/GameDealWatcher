@@ -22,7 +22,7 @@
                     <DataTemplate x:DataType="domainEntities:SupportedRegion">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="{x:Bind DisplayName}" Margin="0,0,8,0"/>
-                            <TextBlock Text="{x:Bind CurrencyCode}" Foreground="{StaticResource SteamSecondaryTextBrush}"/>
+                            <TextBlock Text="{x:Bind CurrencyCode}" Foreground="{StaticResource SteamMutedTextBrush}"/>
                         </StackPanel>
                     </DataTemplate>
                 </ComboBox.ItemTemplate>

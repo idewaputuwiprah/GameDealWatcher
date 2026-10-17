@@ -2,6 +2,7 @@ using System.Text.Json;
 using GameDealWatcher.Domain.Entities;
 using GameDealWatcher.Domain.Interfaces;
 using GameDealWatcher.Infrastructure.Http;
+using Microsoft.Extensions.Logging;
 
 namespace GameDealWatcher.Infrastructure.Providers;
 
@@ -9,46 +10,59 @@ public sealed class SteamProvider : IGameDealProvider
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ISettingsRepository _settingsRepository;
+    private readonly ILogger<SteamProvider> _logger;
 
     public string ProviderName => ProviderNames.Steam;
 
-    public SteamProvider(IHttpClientFactory httpClientFactory, ISettingsRepository settingsRepository)
+    public SteamProvider(IHttpClientFactory httpClientFactory, ISettingsRepository settingsRepository, ILogger<SteamProvider> logger)
     {
         _httpClientFactory = httpClientFactory;
         _settingsRepository = settingsRepository;
+        _logger = logger;
     }
 
     public async Task<IReadOnlyList<GameDeal>> GetDealsAsync(CancellationToken ct)
     {
-        var settings = await _settingsRepository.GetSettingsAsync(ct);
-        var region = RegionCatalog.ByCode(settings.SelectedRegionCode) ?? RegionCatalog.Default;
-
-        var client = _httpClientFactory.CreateClient(HttpClientConfiguration.SteamHandlerName);
-        var url = $"api/featuredcategories/?cc={region.Code}&l={region.SteamLocale}";
-        var response = await client.GetAsync(url, ct);
-        response.EnsureSuccessStatusCode();
-        var json = await response.Content.ReadAsStringAsync(ct);
-        var doc = JsonDocument.Parse(json);
-        var deals = new List<GameDeal>();
-        var root = doc.RootElement;
-
-        // Read currency from API response (Steam returns it at root level)
-        var currency = root.TryGetProperty("currency", out var curProp) && curProp.ValueKind == JsonValueKind.String
-            ? curProp.GetString() ?? region.CurrencyCode
-            : region.CurrencyCode;
-
-        // Steam API structure: root.specials.items[]
-        if (!root.TryGetProperty("specials", out var specials) || specials.ValueKind != JsonValueKind.Object)
-            return deals;
-        if (!specials.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Array)
-            return deals;
-
-        foreach (var item in items.EnumerateArray())
+        try
         {
-            var deal = ParseSteamDeal(item, currency);
-            if (deal != null) deals.Add(deal);
+            var settings = await _settingsRepository.GetSettingsAsync(ct);
+            var region = RegionCatalog.ByCode(settings.SelectedRegionCode) ?? RegionCatalog.Default;
+
+            var client = _httpClientFactory.CreateClient(HttpClientConfiguration.SteamHandlerName);
+            var url = $"api/featuredcategories/?cc={region.Code}&l={region.SteamLocale}";
+            _logger.LogDebug("Steam API request: {Url}", url);
+            var response = await client.GetAsync(url, ct);
+            response.EnsureSuccessStatusCode();
+            var json = await response.Content.ReadAsStringAsync(ct);
+            var doc = JsonDocument.Parse(json);
+            var deals = new List<GameDeal>();
+            var root = doc.RootElement;
+
+            // Read currency from API response (Steam returns it at root level)
+            var currency = root.TryGetProperty("currency", out var curProp) && curProp.ValueKind == JsonValueKind.String
+                ? curProp.GetString() ?? region.CurrencyCode
+                : region.CurrencyCode;
+
+            // Steam API structure: root.specials.items[]
+            if (!root.TryGetProperty("specials", out var specials) || specials.ValueKind != JsonValueKind.Object)
+                return deals;
+            if (!specials.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Array)
+                return deals;
+
+            foreach (var item in items.EnumerateArray())
+            {
+                var deal = ParseSteamDeal(item, currency);
+                if (deal != null) deals.Add(deal);
+            }
+            _logger.LogInformation("Steam API returned {Count} deals", deals.Count);
+            return deals;
         }
-        return deals;
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "SteamProvider.GetDealsAsync failed");
+            throw;
+        }
     }
 
     public static GameDeal? ParseSteamDeal(JsonElement item, string currency)

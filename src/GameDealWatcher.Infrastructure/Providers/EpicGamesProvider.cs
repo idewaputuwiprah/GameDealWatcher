@@ -3,6 +3,7 @@ using System.Text.Json;
 using GameDealWatcher.Domain.Entities;
 using GameDealWatcher.Domain.Interfaces;
 using GameDealWatcher.Infrastructure.Http;
+using Microsoft.Extensions.Logging;
 
 namespace GameDealWatcher.Infrastructure.Providers;
 
@@ -10,43 +11,56 @@ public sealed class EpicGamesProvider : IGameDealProvider
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ISettingsRepository _settingsRepository;
+    private readonly ILogger<EpicGamesProvider> _logger;
 
     public string ProviderName => ProviderNames.Epic;
 
-    public EpicGamesProvider(IHttpClientFactory httpClientFactory, ISettingsRepository settingsRepository)
+    public EpicGamesProvider(IHttpClientFactory httpClientFactory, ISettingsRepository settingsRepository, ILogger<EpicGamesProvider> logger)
     {
         _httpClientFactory = httpClientFactory;
         _settingsRepository = settingsRepository;
+        _logger = logger;
     }
 
     public async Task<IReadOnlyList<GameDeal>> GetDealsAsync(CancellationToken ct)
     {
-        var settings = await _settingsRepository.GetSettingsAsync(ct);
-        var region = RegionCatalog.ByCode(settings.SelectedRegionCode) ?? RegionCatalog.Default;
-
-        var client = _httpClientFactory.CreateClient(HttpClientConfiguration.EpicHandlerName);
-        var url = $"freeGamesPromotions?locale={region.EpicLocale}&country={region.Code}&allowCountries={region.Code}";
-        var response = await client.GetAsync(url, ct);
-        response.EnsureSuccessStatusCode();
-        var json = await response.Content.ReadAsStringAsync(ct);
-        var doc = JsonDocument.Parse(json);
-        var deals = new List<GameDeal>();
-        var root = doc.RootElement;
-
-        // Navigate: data.Catalog.searchStore.elements[]
-        if (!root.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Object) return deals;
-        if (!data.TryGetProperty("Catalog", out var catalog) || catalog.ValueKind != JsonValueKind.Object) return deals;
-        if (!catalog.TryGetProperty("searchStore", out var searchStore) || searchStore.ValueKind != JsonValueKind.Object) return deals;
-        if (!searchStore.TryGetProperty("elements", out var elements) || elements.ValueKind != JsonValueKind.Array) return deals;
-
-        var now = DateTimeOffset.UtcNow;
-
-        foreach (var entry in elements.EnumerateArray())
+        try
         {
-            var deal = ParseEpicElement(entry, now, region);
-            if (deal != null) deals.Add(deal);
+            var settings = await _settingsRepository.GetSettingsAsync(ct);
+            var region = RegionCatalog.ByCode(settings.SelectedRegionCode) ?? RegionCatalog.Default;
+
+            var client = _httpClientFactory.CreateClient(HttpClientConfiguration.EpicHandlerName);
+            var url = $"freeGamesPromotions?locale={region.EpicLocale}&country={region.Code}&allowCountries={region.Code}";
+            _logger.LogDebug("Epic API request: {Url}", url);
+            var response = await client.GetAsync(url, ct);
+            response.EnsureSuccessStatusCode();
+            var json = await response.Content.ReadAsStringAsync(ct);
+            var doc = JsonDocument.Parse(json);
+            var deals = new List<GameDeal>();
+            var root = doc.RootElement;
+
+            // Navigate: data.Catalog.searchStore.elements[]
+            if (!root.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Object) return deals;
+            if (!data.TryGetProperty("Catalog", out var catalog) || catalog.ValueKind != JsonValueKind.Object) return deals;
+            if (!catalog.TryGetProperty("searchStore", out var searchStore) || searchStore.ValueKind != JsonValueKind.Object) return deals;
+            if (!searchStore.TryGetProperty("elements", out var elements) || elements.ValueKind != JsonValueKind.Array) return deals;
+
+            var now = DateTimeOffset.UtcNow;
+
+            foreach (var entry in elements.EnumerateArray())
+            {
+                var deal = ParseEpicElement(entry, now, region);
+                if (deal != null) deals.Add(deal);
+            }
+            _logger.LogInformation("Epic API returned {Count} deals", deals.Count);
+            return deals;
         }
-        return deals;
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "EpicGamesProvider.GetDealsAsync failed");
+            throw;
+        }
     }
 
     public static GameDeal? ParseEpicElement(JsonElement entry, DateTimeOffset now, SupportedRegion region)
