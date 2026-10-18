@@ -17,7 +17,7 @@
             <Slider Minimum="0" Maximum="100" Value="{x:Bind ViewModel.MinimumSteamDiscount, Mode=TwoWay}" Width="200" HorizontalAlignment="Left" AutomationProperties.AutomationId="SettingsMinDiscount"/>
 
             <TextBlock Text="Region &amp; Currency:" Foreground="{StaticResource SteamPrimaryTextBrush}" Margin="0,16,0,4"/>
-            <ComboBox ItemsSource="{x:Bind ViewModel.AvailableRegions}" SelectedValuePath="Code" SelectedValue="{x:Bind ViewModel.SelectedRegionCode, Mode=TwoWay}" AutomationProperties.AutomationId="SettingsRegionSelector">
+            <ComboBox ItemsSource="{x:Bind ViewModel.AvailableRegions}" SelectedValuePath="Code" SelectedValue="{x:Bind ViewModel.SelectedRegionCode, Mode=TwoWay}" AutomationProperties.AutomationId="SettingsRegionSelector" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                 <ComboBox.ItemTemplate>
                     <DataTemplate x:DataType="domainEntities:SupportedRegion">
                         <StackPanel Orientation="Horizontal">

@@ -16,7 +16,7 @@ public class EpicGamesProviderTests
             {
                 "title": "Death Stranding",
                 "id": "abc123",
-                "offerType": "BASEGAME",
+                "offerType": "BASE_GAME",
                 "price": {
                     "totalPrice": {
                         "originalPrice": 3999,
@@ -91,7 +91,7 @@ public class EpicGamesProviderTests
             {
                 "title": "Future Free Game",
                 "id": "future1",
-                "offerType": "BASEGAME",
+                "offerType": "BASE_GAME",
                 "price": {
                     "totalPrice": {"originalPrice": 2999, "discountPrice": 2999}
                 },
@@ -129,7 +129,7 @@ public class EpicGamesProviderTests
             {
                 "title": "Active Plus Upcoming",
                 "id": "both1",
-                "offerType": "BASEGAME",
+                "offerType": "BASE_GAME",
                 "price": {
                     "totalPrice": {"originalPrice": 2999, "discountPrice": 0, "discount": 2999}
                 },
@@ -178,7 +178,7 @@ public class EpicGamesProviderTests
             {
                 "title": "Fallback Game",
                 "id": "fallback1",
-                "offerType": "BASEGAME",
+                "offerType": "BASE_GAME",
                 "price": {"totalPrice": {"originalPrice": 0, "discountPrice": 0}},
                 "catalogNs": {
                     "mappings": [
@@ -203,7 +203,7 @@ public class EpicGamesProviderTests
             {
                 "title": "No URL Game",
                 "id": "nourl1",
-                "offerType": "BASEGAME",
+                "offerType": "BASE_GAME",
                 "price": {"totalPrice": {"originalPrice": 0, "discountPrice": 0}}
             }
             """;
@@ -223,7 +223,7 @@ public class EpicGamesProviderTests
             {
                 "title": "Always Free",
                 "id": "free1",
-                "offerType": "BASEGAME",
+                "offerType": "BASE_GAME",
                 "price": {"totalPrice": {"originalPrice": 0, "discountPrice": 0}}
             }
             """;

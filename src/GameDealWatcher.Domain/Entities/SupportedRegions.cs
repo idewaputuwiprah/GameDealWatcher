@@ -25,7 +25,8 @@ public static class RegionCatalog
         new("CA", "Canada", "CAD", "english", "en-CA"),
         new("RU", "Russia", "RUB", "russian", "ru-RU"),
         new("CN", "China (Simplified)", "CNY", "schinese", "zh-CN"),
-        new("IN", "India", "INR", "english", "en-IN")
+        new("IN", "India", "INR", "english", "en-IN"),
+        new("ID", "Indonesia", "IDR", "english", "en-ID")
     ];
 
     public static IReadOnlyList<SupportedRegion> All => Regions;

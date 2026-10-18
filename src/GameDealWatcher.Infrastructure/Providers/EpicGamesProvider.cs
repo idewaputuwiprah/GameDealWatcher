@@ -71,7 +71,7 @@ public sealed class EpicGamesProvider : IGameDealProvider
             if (entry.TryGetProperty("offerType", out var offerType) && offerType.ValueKind == JsonValueKind.String)
             {
                 var offerTypeValue = offerType.GetString();
-                if (offerTypeValue != null && offerTypeValue != "BASEGAME") return null;
+                if (offerTypeValue != null && offerTypeValue != "BASE_GAME") return null;
             }
 
             var title = entry.TryGetProperty("title", out var titleProp) ? titleProp.GetString() ?? "Unknown" : "Unknown";

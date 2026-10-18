@@ -108,10 +108,10 @@ public sealed partial class GameCard : UserControl
         deal?.IsUpcoming == true ? Visibility.Visible : Visibility.Collapsed;
 
     public string CurrentPriceText(GameDeal? deal) =>
-        deal == null ? string.Empty : FormatPrice(deal.CurrentPrice);
+        deal == null ? string.Empty : FormatPrice(deal.CurrentPrice, deal.Currency);
 
     public string OriginalPriceText(GameDeal? deal) =>
-        deal == null ? string.Empty : FormatPrice(deal.OriginalPrice);
+        deal == null ? string.Empty : FormatPrice(deal.OriginalPrice, deal.Currency);
 
     public Visibility OriginalPriceVisibility(GameDeal? deal) =>
         deal is { DiscountPercentage: > 0 } ? Visibility.Visible : Visibility.Collapsed;
@@ -129,6 +129,29 @@ public sealed partial class GameCard : UserControl
     public string OpenStoreAutomationName(GameDeal? deal) =>
         deal != null ? $"Open {deal.Title} in store" : "Open Store";
 
-    private static string FormatPrice(decimal price) =>
-        price <= 0 ? "Free" : price.ToString("$0.00", CultureInfo.InvariantCulture);
+    private static string FormatPrice(decimal price, string? currency) =>
+        price <= 0 ? "Free" : GetFormattedPrice(price, currency);
+
+    private static string GetFormattedPrice(decimal price, string? currency)
+    {
+        var f2 = price.ToString("F2", CultureInfo.InvariantCulture);
+        var f0 = price.ToString("F0", CultureInfo.InvariantCulture);
+
+        return currency switch
+        {
+            "USD" or null => $"${f2}",
+            "EUR" => $"€{f2}",
+            "GBP" => $"£{f2}",
+            "JPY" or "KRW" => f0,
+            "IDR" => f2,
+            "BRL" => $"R$ {f2.Replace('.', ',')}",
+            "MXN" => $"${f2} MX",
+            "AUD" => $"${f2} AU",
+            "CAD" => $"${f2} CA",
+            "CNY" => $"¥{f2}",
+            "INR" => $"₹{f2}",
+            "RUB" => $"{f2.Replace('.', ',')} ₽",
+            _ => $"{currency} {f2}"
+        };
+    }
 }

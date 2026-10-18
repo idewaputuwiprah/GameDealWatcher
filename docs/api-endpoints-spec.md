@@ -33,7 +33,7 @@ This document describes the public endpoints that the **GameDealWatcher** applic
 
 - `id` – string; offer identifier, used to build deal ID (`epic_{id}`). If missing, a deterministic fallback ID is generated from SHA256 of the title.
 - `title` – string; game title
-- `offerType` – string; only items with value `BASEGAME` are included (DLCs, soundtracks, bundles are filtered out)
+- `offerType` – string; only items with value `BASE_GAME` are included (DLCs, soundtracks, bundles are filtered out)
 - `price.totalPrice.originalPrice` – decimal; original price in cents
 - `price.totalPrice.discountPrice` – decimal; discounted price in cents
 - `promotions.promotionalOffers[].promotionalOffers[]` – nested array of active promotional offers; each contains:
