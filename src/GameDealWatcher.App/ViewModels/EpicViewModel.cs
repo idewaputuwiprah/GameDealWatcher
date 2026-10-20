@@ -54,7 +54,9 @@ public partial class EpicViewModel : ObservableObject
 
             var filtered = FilterText switch
             {
-                "Free Now" => epicDeals.Where(d => d.IsCurrentlyFree),
+                // CurrentPrice guard keeps stale cached rows (flagged free before the
+                // provider fix) out of the list until the next refresh rewrites them.
+                "Free Now" => epicDeals.Where(d => d.IsCurrentlyFree && d.CurrentPrice == 0),
                 "Upcoming" => epicDeals.Where(d => d.IsUpcoming),
                 _ => epicDeals
             };

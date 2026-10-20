@@ -64,6 +64,61 @@ public class EpicGamesProviderTests
     }
 
     [Fact]
+    public void ParseEpicElement_ActivePaidDiscount_IsNotFree()
+    {
+        var json = """
+            {
+                "title": "Castlevania Anniversary Collection",
+                "id": "paid1",
+                "offerType": "BASE_GAME",
+                "price": {
+                    "totalPrice": {"originalPrice": 285000, "discountPrice": 114000, "discount": 171000}
+                },
+                "promotions": {
+                    "promotionalOffers": [
+                        {
+                            "promotionalOffers": [
+                                {
+                                    "startDate": "2024-01-10T00:00:00.000Z",
+                                    "endDate": "2024-01-20T00:00:00.000Z"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "productSlug": "castlevania"
+            }
+            """;
+        var doc = JsonDocument.Parse(json);
+        var entry = doc.RootElement;
+
+        var deal = EpicGamesProvider.ParseEpicElement(entry, Now, RegionCatalog.Default);
+
+        Assert.NotNull(deal);
+        Assert.False(deal!.IsCurrentlyFree);
+        Assert.Equal(60, deal.DiscountPercentage);
+    }
+
+    [Fact]
+    public void ParseEpicElement_PaidWithoutDiscount_ReturnsNull()
+    {
+        var json = """
+            {
+                "title": "Luftrausers",
+                "id": "catalog1",
+                "offerType": "BASE_GAME",
+                "price": {"totalPrice": {"originalPrice": 69999, "discountPrice": 69999}}
+            }
+            """;
+        var doc = JsonDocument.Parse(json);
+        var entry = doc.RootElement;
+
+        var deal = EpicGamesProvider.ParseEpicElement(entry, Now, RegionCatalog.Default);
+
+        Assert.Null(deal);
+    }
+
+    [Fact]
     public void ParseEpicElement_DlcOfferType_ReturnsNull()
     {
         var json = """

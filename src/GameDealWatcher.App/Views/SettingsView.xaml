@@ -3,6 +3,7 @@
               xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
               xmlns:domainEntities="using:GameDealWatcher.Domain.Entities">
     <Grid Background="{StaticResource SteamAppBackgroundBrush}">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="20" MaxWidth="400" HorizontalAlignment="Left">
             <TextBlock Text="Settings" Style="{StaticResource SteamPageTitleStyle}" Margin="0,0,0,16"/>
 
@@ -29,10 +30,11 @@
             </ComboBox>
 
             <Button Content="Clear Image Cache" Style="{StaticResource SteamNavButtonStyle}" Command="{x:Bind ViewModel.ClearCacheCommand}"
-                    Background="{StaticResource SteamCardBackgroundBrush}" HorizontalContentAlignment="Center"
+                    Background="{StaticResource SteamCardBackgroundBrush}" HorizontalAlignment="Left" HorizontalContentAlignment="Center"
                     Margin="0,20,0,0" Width="200" AutomationProperties.AutomationId="BtnClearCache"/>
             <Button Content="Save Settings" Style="{StaticResource SteamAccentButtonStyle}" Command="{x:Bind ViewModel.SaveCommand}"
-                    HorizontalContentAlignment="Center" Margin="0,8,0,0" Width="200" AutomationProperties.AutomationId="BtnSaveSettings"/>
+                    HorizontalAlignment="Left" HorizontalContentAlignment="Center" Margin="0,8,0,0" Width="200" AutomationProperties.AutomationId="BtnSaveSettings"/>
         </StackPanel>
+        </ScrollViewer>
     </Grid>
 </UserControl>

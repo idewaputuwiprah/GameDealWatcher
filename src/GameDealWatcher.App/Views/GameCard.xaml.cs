@@ -1,6 +1,6 @@
-using System.Globalization;
 using System.IO;
 using GameDealWatcher.Domain.Entities;
+using GameDealWatcher.Domain.Formatting;
 using GameDealWatcher.Infrastructure.Images;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
@@ -99,19 +99,19 @@ public sealed partial class GameCard : UserControl
         deal is { DiscountPercentage: > 0 } ? $"-{deal.DiscountPercentage}%" : string.Empty;
 
     public Visibility DiscountBadgeVisibility(GameDeal? deal) =>
-        deal is { DiscountPercentage: > 0, IsCurrentlyFree: false, IsUpcoming: false } ? Visibility.Visible : Visibility.Collapsed;
+        deal is { DiscountPercentage: > 0, CurrentPrice: > 0, IsUpcoming: false } ? Visibility.Visible : Visibility.Collapsed;
 
     public Visibility FreeBadgeVisibility(GameDeal? deal) =>
-        deal?.IsCurrentlyFree == true ? Visibility.Visible : Visibility.Collapsed;
+        deal is { IsCurrentlyFree: true, CurrentPrice: 0 } ? Visibility.Visible : Visibility.Collapsed;
 
     public Visibility UpcomingBadgeVisibility(GameDeal? deal) =>
         deal?.IsUpcoming == true ? Visibility.Visible : Visibility.Collapsed;
 
     public string CurrentPriceText(GameDeal? deal) =>
-        deal == null ? string.Empty : FormatPrice(deal.CurrentPrice, deal.Currency);
+        deal == null ? string.Empty : PriceFormatter.Format(deal.CurrentPrice, deal.Currency);
 
     public string OriginalPriceText(GameDeal? deal) =>
-        deal == null ? string.Empty : FormatPrice(deal.OriginalPrice, deal.Currency);
+        deal == null ? string.Empty : PriceFormatter.Format(deal.OriginalPrice, deal.Currency);
 
     public Visibility OriginalPriceVisibility(GameDeal? deal) =>
         deal is { DiscountPercentage: > 0 } ? Visibility.Visible : Visibility.Collapsed;
@@ -128,30 +128,4 @@ public sealed partial class GameCard : UserControl
 
     public string OpenStoreAutomationName(GameDeal? deal) =>
         deal != null ? $"Open {deal.Title} in store" : "Open Store";
-
-    private static string FormatPrice(decimal price, string? currency) =>
-        price <= 0 ? "Free" : GetFormattedPrice(price, currency);
-
-    private static string GetFormattedPrice(decimal price, string? currency)
-    {
-        var f2 = price.ToString("F2", CultureInfo.InvariantCulture);
-        var f0 = price.ToString("F0", CultureInfo.InvariantCulture);
-
-        return currency switch
-        {
-            "USD" or null => $"${f2}",
-            "EUR" => $"€{f2}",
-            "GBP" => $"£{f2}",
-            "JPY" or "KRW" => f0,
-            "IDR" => f2,
-            "BRL" => $"R$ {f2.Replace('.', ',')}",
-            "MXN" => $"${f2} MX",
-            "AUD" => $"${f2} AU",
-            "CAD" => $"${f2} CA",
-            "CNY" => $"¥{f2}",
-            "INR" => $"₹{f2}",
-            "RUB" => $"{f2.Replace('.', ',')} ₽",
-            _ => $"{currency} {f2}"
-        };
-    }
 }

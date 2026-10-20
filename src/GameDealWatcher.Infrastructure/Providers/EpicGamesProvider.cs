@@ -151,12 +151,17 @@ public sealed class EpicGamesProvider : IGameDealProvider
                 }
             }
 
-            // Determine free/upcoming status
-            var isCurrentlyFree = hasActiveOffer && activeStartsAt.HasValue && activeEndsAt.HasValue
-                ? now >= activeStartsAt && now < activeEndsAt
-                : (originalPrice == 0 && currentPrice == 0);
+            // Determine free/upcoming status. A running promotion is not automatically
+            // free — Epic also returns ordinary paid discounts (e.g. 60% off) here.
+            var isCurrentlyFree = currentPrice == 0
+                && (hasActiveOffer && activeStartsAt.HasValue && activeEndsAt.HasValue
+                    ? now >= activeStartsAt && now < activeEndsAt
+                    : originalPrice == 0);
             var isUpcoming = hasUpcomingOffer && !isCurrentlyFree
                 && upcomingStartsAt.HasValue && now < upcomingStartsAt;
+
+            // This endpoint also returns plain catalogue entries with no active deal.
+            if (!isCurrentlyFree && !isUpcoming && discountPct <= 0) return null;
 
             // Select which dates to return
             DateTimeOffset? startsAt;
