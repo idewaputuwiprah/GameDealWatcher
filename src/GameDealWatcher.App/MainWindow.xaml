@@ -20,6 +20,9 @@
             <Border Height="1" Background="{StaticResource SteamDividerBrush}" Margin="16,20"/>
 
             <Button Content="Refresh Now" Style="{StaticResource SteamAccentButtonStyle}" Command="{x:Bind ViewModel.ExecuteRefreshCommand}" AutomationProperties.AutomationId="BtnRefresh" Margin="16,0" HorizontalAlignment="Stretch"/>
+            <ProgressRing IsActive="{x:Bind ViewModel.ExecuteRefreshCommand.IsRunning, Mode=OneWay}"
+                          Width="20" Height="20" Margin="16,8,16,0" HorizontalAlignment="Left"
+                          AutomationProperties.AutomationId="RefreshProgress"/>
             <TextBlock Text="{x:Bind ViewModel.LastUpdatedText, Mode=OneWay}" Foreground="{StaticResource SteamMutedTextBrush}" FontSize="12" Margin="16,8,16,0"/>
         </StackPanel>
 

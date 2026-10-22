@@ -175,8 +175,9 @@ public class GameDealServiceTests
             notifMock.Object,
             NullLogger<GameDealService>.Instance);
 
-        await service.RefreshAllDealsAsync(CancellationToken.None);
+        var result = await service.RefreshAllDealsAsync(CancellationToken.None);
 
+        Assert.Contains(ProviderNames.Epic, result.FailedProviders);
         repoMock.Verify(r => r.InsertDealsAsync(It.Is<IReadOnlyList<GameDeal>>(l => l.Count == 1), It.IsAny<CancellationToken>()), Times.Once);
         repoMock.Verify(r => r.RecordRefreshAsync(ProviderNames.Epic, false, 0, It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
         repoMock.Verify(r => r.RecordRefreshAsync(ProviderNames.Steam, true, 1, null, It.IsAny<CancellationToken>()), Times.Once);
@@ -248,5 +249,30 @@ public class GameDealServiceTests
         await service.RefreshAllDealsAsync(CancellationToken.None);
 
         repoMock.Verify(r => r.DeleteDealsNotSeenAsync(ProviderNames.Steam, It.Is<IReadOnlyList<string>>(l => l.Contains("steam_1")), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task RefreshAllDealsAsync_WhenProviderReturnsNoDeals_KeepsItsCachedDeals()
+    {
+        var repoMock = new Mock<IGameDealRepository>();
+        var settingsMock = new Mock<ISettingsRepository>();
+        var notifMock = new Mock<INotificationService>();
+        var steamMock = new Mock<IGameDealProvider>();
+        steamMock.SetupGet(p => p.ProviderName).Returns(ProviderNames.Steam);
+        steamMock.Setup(p => p.GetDealsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<GameDeal>());
+        var epicMock = new Mock<IGameDealProvider>();
+        epicMock.SetupGet(p => p.ProviderName).Returns(ProviderNames.Epic);
+        var epicDeal = CreateDeal("epic_1", "1", ProviderNames.Epic, "Free Game", 9.99m, 0m, 100, isCurrentlyFree: true);
+        epicMock.Setup(p => p.GetDealsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<GameDeal> { epicDeal });
+
+        var service = CreateService(repoMock, new List<IGameDealProvider> { steamMock.Object, epicMock.Object }, settingsMock, notifMock);
+
+        await service.RefreshAllDealsAsync(CancellationToken.None);
+
+        // An empty success is not proof that everything ended, so only the non-empty provider prunes.
+        repoMock.Verify(r => r.DeleteDealsNotSeenAsync(ProviderNames.Steam, It.IsAny<IReadOnlyList<string>>(), It.IsAny<CancellationToken>()), Times.Never);
+        repoMock.Verify(r => r.DeleteDealsNotSeenAsync(ProviderNames.Epic, It.Is<IReadOnlyList<string>>(l => l.Contains("epic_1")), It.IsAny<CancellationToken>()), Times.Once);
     }
 }

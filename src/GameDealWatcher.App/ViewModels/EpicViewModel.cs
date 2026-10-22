@@ -52,12 +52,11 @@ public partial class EpicViewModel : ObservableObject
             var fetchedDeals = await _gameDealService.GetAllDealsAsync(_loadCts.Token);
             var epicDeals = fetchedDeals.Where(d => d.ProviderName == ProviderNames.Epic);
 
+            var now = DateTimeOffset.UtcNow;
             var filtered = FilterText switch
             {
-                // CurrentPrice guard keeps stale cached rows (flagged free before the
-                // provider fix) out of the list until the next refresh rewrites them.
-                "Free Now" => epicDeals.Where(d => d.IsCurrentlyFree && d.CurrentPrice == 0),
-                "Upcoming" => epicDeals.Where(d => d.IsUpcoming),
+                "Free Now" => epicDeals.Where(d => d.IsFreeAt(now)),
+                "Upcoming" => epicDeals.Where(d => d.IsUpcomingAt(now)),
                 _ => epicDeals
             };
 

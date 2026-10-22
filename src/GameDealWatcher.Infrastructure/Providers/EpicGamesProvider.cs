@@ -9,6 +9,10 @@ namespace GameDealWatcher.Infrastructure.Providers;
 
 public sealed class EpicGamesProvider : IGameDealProvider
 {
+    // Card cover area is 230x110 DIP; 460 wide keeps it sharp on high-DPI displays
+    // while avoiding multi-megabyte 2560x1440 originals.
+    private const int CoverImageWidth = 460;
+
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ISettingsRepository _settingsRepository;
     private readonly ILogger<EpicGamesProvider> _logger;
@@ -40,10 +44,15 @@ public sealed class EpicGamesProvider : IGameDealProvider
             var root = doc.RootElement;
 
             // Navigate: data.Catalog.searchStore.elements[]
-            if (!root.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Object) return deals;
-            if (!data.TryGetProperty("Catalog", out var catalog) || catalog.ValueKind != JsonValueKind.Object) return deals;
-            if (!catalog.TryGetProperty("searchStore", out var searchStore) || searchStore.ValueKind != JsonValueKind.Object) return deals;
-            if (!searchStore.TryGetProperty("elements", out var elements) || elements.ValueKind != JsonValueKind.Array) return deals;
+            // A missing path means the response shape changed; fail so the cached deals survive.
+            if (!root.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Object)
+                throw new InvalidOperationException("Epic response missing data");
+            if (!data.TryGetProperty("Catalog", out var catalog) || catalog.ValueKind != JsonValueKind.Object)
+                throw new InvalidOperationException("Epic response missing Catalog");
+            if (!catalog.TryGetProperty("searchStore", out var searchStore) || searchStore.ValueKind != JsonValueKind.Object)
+                throw new InvalidOperationException("Epic response missing searchStore");
+            if (!searchStore.TryGetProperty("elements", out var elements) || elements.ValueKind != JsonValueKind.Array)
+                throw new InvalidOperationException("Epic response missing elements");
 
             var now = DateTimeOffset.UtcNow;
 
@@ -90,14 +99,14 @@ public sealed class EpicGamesProvider : IGameDealProvider
             string? thumbUrl = null;
             if (entry.TryGetProperty("keyImages", out var images) && images.ValueKind == JsonValueKind.Array)
             {
-                imgUrl = GetImageUrl(images, "OfferImageWide") ?? GetImageUrl(images, "VaultClosed");
-                thumbUrl = GetImageUrl(images, "Thumbnail");
+                imgUrl = WithResize(GetImageUrl(images, "OfferImageWide") ?? GetImageUrl(images, "VaultClosed"), CoverImageWidth);
+                thumbUrl = WithResize(GetImageUrl(images, "Thumbnail"), CoverImageWidth);
             }
 
             // Store URL — multi-level fallback with locale-aware URLs
             var storeUrl = BuildStoreUrl(entry, offerId, region.EpicLocale);
 
-            // Price data — Epic stores prices in cents, currency from selected region
+            // Price data — Epic stores prices in minor units, currency from selected region
             var originalPrice = 0m;
             var currentPrice = 0m;
             var discountPct = 0;
@@ -110,8 +119,14 @@ public sealed class EpicGamesProvider : IGameDealProvider
 
                 if (price.TryGetProperty("totalPrice", out var total) && total.ValueKind == JsonValueKind.Object)
                 {
-                    originalPrice = total.TryGetProperty("originalPrice", out var op) ? op.GetDecimal() / 100m : 0m;
-                    currentPrice = total.TryGetProperty("discountPrice", out var dp) ? dp.GetDecimal() / 100m : 0m;
+                    // Epic prices are integers in the currency's minor unit. JPY/KRW use
+                    // 0 decimals, which the response reports per currency.
+                    var decimals = total.TryGetProperty("currencyInfo", out var currencyInfo) && currencyInfo.ValueKind == JsonValueKind.Object
+                        && currencyInfo.TryGetProperty("decimals", out var decimalsProp) && decimalsProp.TryGetInt32(out var d)
+                            ? d : 2;
+                    var divisor = (decimal)Math.Pow(10, decimals);
+                    originalPrice = total.TryGetProperty("originalPrice", out var op) ? op.GetDecimal() / divisor : 0m;
+                    currentPrice = total.TryGetProperty("discountPrice", out var dp) ? dp.GetDecimal() / divisor : 0m;
                     if (originalPrice > 0)
                         discountPct = (int)Math.Round((1 - currentPrice / originalPrice) * 100);
                 }
@@ -126,6 +141,7 @@ public sealed class EpicGamesProvider : IGameDealProvider
             DateTimeOffset? upcomingEndsAt = null;
             var hasActiveOffer = false;
             var hasUpcomingOffer = false;
+            var upcomingIsFree = false;
 
             if (entry.TryGetProperty("promotions", out var promotions) && promotions.ValueKind == JsonValueKind.Object)
             {
@@ -145,7 +161,14 @@ public sealed class EpicGamesProvider : IGameDealProvider
                     var upcomingOffer = upcoming[0];
                     if (upcomingOffer.TryGetProperty("promotionalOffers", out var innerUpcoming) && innerUpcoming.ValueKind == JsonValueKind.Array && innerUpcoming.GetArrayLength() > 0)
                     {
-                        TryParseDateRange(innerUpcoming[0], out upcomingStartsAt, out upcomingEndsAt);
+                        var offer = innerUpcoming[0];
+                        TryParseDateRange(offer, out upcomingStartsAt, out upcomingEndsAt);
+                        // discountPercentage is the share of the original price still to be
+                        // paid, so 0 means free; a missing value is treated the same way.
+                        upcomingIsFree = !offer.TryGetProperty("discountSetting", out var discountSetting)
+                            || !discountSetting.TryGetProperty("discountPercentage", out var percentage)
+                            || !percentage.TryGetInt32(out var upcomingPct)
+                            || upcomingPct == 0;
                         hasUpcomingOffer = true;
                     }
                 }
@@ -157,8 +180,10 @@ public sealed class EpicGamesProvider : IGameDealProvider
                 && (hasActiveOffer && activeStartsAt.HasValue && activeEndsAt.HasValue
                     ? now >= activeStartsAt && now < activeEndsAt
                     : originalPrice == 0);
-            var isUpcoming = hasUpcomingOffer && !isCurrentlyFree
-                && upcomingStartsAt.HasValue && now < upcomingStartsAt;
+            // Upcoming offers also cover future paid discounts (e.g. 80% off during a sale),
+            // so only a zero-price promotion counts as an upcoming free game.
+            var isUpcoming = hasUpcomingOffer && upcomingIsFree && !isCurrentlyFree
+                && discountPct == 0 && upcomingStartsAt.HasValue && now < upcomingStartsAt;
 
             // This endpoint also returns plain catalogue entries with no active deal.
             if (!isCurrentlyFree && !isUpcoming && discountPct <= 0) return null;
@@ -265,4 +290,19 @@ public sealed class EpicGamesProvider : IGameDealProvider
         }
         return null;
     }
+
+    private static string? WithResize(string? url, int width)
+    {
+        if (string.IsNullOrEmpty(url)) return url;
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return url;
+        if (!IsHost(uri.Host, "epicgames.com") && !IsHost(uri.Host, "unrealengine.com"))
+            return url;
+
+        var separator = url.Contains('?') ? '&' : '?';
+        return $"{url}{separator}w={width}&resize=1";
+    }
+
+    private static bool IsHost(string host, string domain) =>
+        host.Equals(domain, StringComparison.OrdinalIgnoreCase)
+        || host.EndsWith($".{domain}", StringComparison.OrdinalIgnoreCase);
 }

@@ -34,7 +34,14 @@ public sealed record GameDeal(
     int? ReviewScore,
     int? ReviewCount,
     DateTimeOffset? ReleaseDate,
-    string[]? Genres);
+    string[]? Genres)
+{
+    public bool IsFreeAt(DateTimeOffset now) =>
+        IsCurrentlyFree && CurrentPrice == 0 && (EndsAt is null || EndsAt > now);
+
+    public bool IsUpcomingAt(DateTimeOffset now) =>
+        IsUpcoming && (StartsAt is null || StartsAt > now);
+}
 
 public sealed record DealHistoryEntry(
     string DealId,

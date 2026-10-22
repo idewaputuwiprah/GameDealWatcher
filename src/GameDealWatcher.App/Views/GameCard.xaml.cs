@@ -102,10 +102,10 @@ public sealed partial class GameCard : UserControl
         deal is { DiscountPercentage: > 0, CurrentPrice: > 0, IsUpcoming: false } ? Visibility.Visible : Visibility.Collapsed;
 
     public Visibility FreeBadgeVisibility(GameDeal? deal) =>
-        deal is { IsCurrentlyFree: true, CurrentPrice: 0 } ? Visibility.Visible : Visibility.Collapsed;
+        deal?.IsFreeAt(DateTimeOffset.UtcNow) == true ? Visibility.Visible : Visibility.Collapsed;
 
     public Visibility UpcomingBadgeVisibility(GameDeal? deal) =>
-        deal?.IsUpcoming == true ? Visibility.Visible : Visibility.Collapsed;
+        deal?.IsUpcomingAt(DateTimeOffset.UtcNow) == true ? Visibility.Visible : Visibility.Collapsed;
 
     public string CurrentPriceText(GameDeal? deal) =>
         deal == null ? string.Empty : PriceFormatter.Format(deal.CurrentPrice, deal.Currency);
@@ -114,12 +114,12 @@ public sealed partial class GameCard : UserControl
         deal == null ? string.Empty : PriceFormatter.Format(deal.OriginalPrice, deal.Currency);
 
     public Visibility OriginalPriceVisibility(GameDeal? deal) =>
-        deal is { DiscountPercentage: > 0 } ? Visibility.Visible : Visibility.Collapsed;
+        deal is { DiscountPercentage: > 0, OriginalPrice: > 0 } ? Visibility.Visible : Visibility.Collapsed;
 
     public string DateRangeText(GameDeal? deal) => deal switch
     {
-        { IsUpcoming: true, StartsAt: { } starts } => $"Starts {starts.LocalDateTime:MMM d}",
-        { EndsAt: { } ends } => $"Until {ends.LocalDateTime:MMM d}",
+        { IsUpcoming: true, StartsAt: { } starts } when starts > DateTimeOffset.UtcNow => $"Starts {starts.LocalDateTime:MMM d}",
+        { EndsAt: { } ends } when ends > DateTimeOffset.UtcNow => $"Until {ends.LocalDateTime:MMM d}",
         _ => string.Empty
     };
 

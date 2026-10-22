@@ -37,4 +37,17 @@ public class PriceFormatterTests
     {
         Assert.Equal("$14.99", PriceFormatter.Format(14.99m, null));
     }
+
+    [Theory]
+    [InlineData("$59.99", "USD", 59.99)]
+    [InlineData("14,99\u20AC", "EUR", 14.99)]
+    [InlineData("1.299,50\u20AC", "EUR", 1299.50)]
+    [InlineData("\u00A5 1,980", "JPY", 1980)]
+    [InlineData("R$ 29,99", "BRL", 29.99)]
+    [InlineData("Rp 438.000", "IDR", 438000)]
+    public void TryParse_ReadsSteamPriceText(string text, string currency, decimal expected)
+    {
+        Assert.True(PriceFormatter.TryParse(text, currency, out var price));
+        Assert.Equal(expected, price);
+    }
 }

@@ -16,6 +16,22 @@ public static class PriceFormatter
         return price.ToString("C", FormatFor(code));
     }
 
+    public static bool TryParse(string? text, string? currency, out decimal price)
+    {
+        price = 0m;
+        if (string.IsNullOrWhiteSpace(text)) return false;
+
+        var code = string.IsNullOrWhiteSpace(currency) ? "USD" : currency.Trim().ToUpperInvariant();
+        var numeric = new string(text
+            .Replace('\u00A0', ' ')
+            .Where(c => char.IsDigit(c) || c is '.' or ',' or '-' or ' ')
+            .ToArray());
+        var format = FormatFor(code);
+        format.NumberDecimalSeparator = format.CurrencyDecimalSeparator;
+        format.NumberGroupSeparator = format.CurrencyGroupSeparator;
+        return decimal.TryParse(numeric, NumberStyles.Number, format, out price);
+    }
+
     private static NumberFormatInfo FormatFor(string currency)
     {
         var format = (NumberFormatInfo)CultureInfo.InvariantCulture.NumberFormat.Clone();

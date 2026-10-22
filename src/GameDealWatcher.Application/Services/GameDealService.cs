@@ -39,7 +39,7 @@ public sealed class GameDealService : IGameDealService
         return await _repository.NeedsRefreshAsync(settings.RefreshInterval, ct);
     }
 
-    public async Task RefreshAllDealsAsync(CancellationToken ct)
+    public async Task<RefreshResult> RefreshAllDealsAsync(CancellationToken ct)
     {
         _logger.LogInformation("Refresh started at {Time}", DateTimeOffset.UtcNow);
         var settings = await _settingsRepository.GetSettingsAsync(ct);
@@ -77,26 +77,27 @@ public sealed class GameDealService : IGameDealService
         // 5. Send notifications (respecting user settings)
         SendNotifications(newDealNotifications, settings);
 
+        // Delete deals that were not seen in this refresh (no longer active).
+        // Scoped per successful provider — a provider that failed this cycle keeps
+        // its previously cached deals untouched instead of having them wiped out
+        // just because a *different* provider's IDs weren't in a combined seen-set.
+        // An empty success is not proof that everything ended, so it must not prune.
+        try
+        {
+            foreach (var result in providerResults.Where(r => r.Success && r.Deals.Count > 0))
+            {
+                var seenIds = result.Deals.Select(d => d.Id).ToList();
+                await _repository.DeleteDealsNotSeenAsync(result.ProviderName, seenIds, ct);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to delete unseen deals");
+        }
+
         // 6. Only mark refresh if at least one provider returned data
         if (allNewDeals.Count > 0)
         {
-            // Delete deals that were not seen in this refresh (no longer active).
-            // Scoped per successful provider — a provider that failed this cycle keeps
-            // its previously cached deals untouched instead of having them wiped out
-            // just because a *different* provider's IDs weren't in a combined seen-set.
-            try
-            {
-                foreach (var result in providerResults.Where(r => r.Success))
-                {
-                    var seenIds = result.Deals.Select(d => d.Id).ToList();
-                    await _repository.DeleteDealsNotSeenAsync(result.ProviderName, seenIds, ct);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to delete unseen deals");
-            }
-
             try
             {
                 await _repository.SaveLastRefreshAsync(settings.RefreshInterval, ct);
@@ -121,7 +122,9 @@ public sealed class GameDealService : IGameDealService
             _logger.LogWarning("All providers returned no deals — not updating refresh timestamp");
         }
 
+        var failedProviders = providerResults.Where(r => !r.Success).Select(r => r.ProviderName).ToList();
         _logger.LogInformation("All refreshes complete at {Time}", DateTimeOffset.UtcNow);
+        return new RefreshResult(failedProviders);
     }
 
     private async Task<ProviderRefreshResult> RefreshProviderAsync(IGameDealProvider provider, CancellationToken ct)

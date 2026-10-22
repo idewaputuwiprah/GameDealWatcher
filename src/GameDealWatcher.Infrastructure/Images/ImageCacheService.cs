@@ -14,6 +14,8 @@ public interface IImageCacheService
 
 public sealed class ImageCacheService : IImageCacheService
 {
+    private static readonly TimeSpan MaxCacheAge = TimeSpan.FromDays(30);
+
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly string _cacheDirectory;
     private readonly object _clearLock = new();
@@ -24,6 +26,7 @@ public sealed class ImageCacheService : IImageCacheService
         _cacheDirectory = cacheDirectory ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GameDealWatcher", "Cache", "Images");
         Directory.CreateDirectory(_cacheDirectory);
         CleanOrphanedTempFiles();
+        PruneOldFiles();
     }
 
     public async Task<string?> GetOrDownloadImageAsync(string? imageUrl, CancellationToken ct)
@@ -135,6 +138,34 @@ public sealed class ImageCacheService : IImageCacheService
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Error during orphaned temp file cleanup: {ex.Message}");
+        }
+    }
+
+    // shortcut: age-based only, no size cap; add size accounting if the directory gets large.
+    private void PruneOldFiles()
+    {
+        var cutoff = DateTime.UtcNow - MaxCacheAge;
+        try
+        {
+            foreach (var file in Directory.EnumerateFiles(_cacheDirectory, "*", SearchOption.AllDirectories))
+            {
+                try
+                {
+                    if (File.GetLastWriteTimeUtc(file) < cutoff) File.Delete(file);
+                }
+                catch (IOException ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Could not prune cached file {file}: {ex.Message}");
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Access denied pruning cached file {file}: {ex.Message}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error during cache pruning: {ex.Message}");
         }
     }
 

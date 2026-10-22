@@ -52,9 +52,12 @@ public partial class MainViewModel : ObservableObject
     {
         try
         {
+            LastUpdatedText = "Refreshing...";
             using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
-            await _gameDealService.RefreshAllDealsAsync(cts.Token);
-            LastUpdatedText = $"Last updated: {DateTime.Now:t}";
+            var result = await _gameDealService.RefreshAllDealsAsync(cts.Token);
+            LastUpdatedText = result.FailedProviders.Count == 0
+                ? $"Last updated: {DateTime.Now:t}"
+                : $"Last updated: {DateTime.Now:t} ({string.Join(", ", result.FailedProviders)} failed)";
 
             // Reload the deal lists so the refresh is visible without navigating away —
             // views only reload themselves in their Loaded handlers.
@@ -62,7 +65,7 @@ public partial class MainViewModel : ObservableObject
             await _epicView.ViewModel.LoadDealsAsync();
             await _steamView.ViewModel.LoadDealsAsync();
         }
-        catch (OperationCanceledException) { }
+        catch (OperationCanceledException) { LastUpdatedText = "Refresh canceled"; }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Refresh failed: {ex}");
